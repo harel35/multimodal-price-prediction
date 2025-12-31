@@ -1,0 +1,13 @@
+# Deep Learning Core
+torch
+torchvision
+#transformers
+
+# Data Manipulation
+pandas
+numpy
+scikit-learn
+
+# Visualization
+matplotlib
+
