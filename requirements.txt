@@ -1,13 +1,19 @@
 # Deep Learning Core
-torch
-torchvision
-#transformers
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
 
 # Data Manipulation
-pandas
-numpy
-scikit-learn
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Image Processing
+Pillow>=10.0.0
 
 # Visualization
-matplotlib
+matplotlib>=3.7.0
+
+# Utilities
+tqdm>=4.65.0
 
