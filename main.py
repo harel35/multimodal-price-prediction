@@ -69,39 +69,8 @@ def train(
     
     train_loader = dataloaders['train']
     val_loader = dataloaders['val']
-    test_loader = dataloaders['test']
     
-    # Initialize text preprocessor
-    print("\nInitializing text preprocessor...")
-    text_preprocessor = TextPreprocessor(
-        model_name='bert-base-uncased',
-        max_length=config.MAX_TEXT_LENGTH
-    )
     
-    # Initialize model
-    print("\nInitializing model...")
-
-    model = config.MODEL_NAME(
-        text_preprocessor=text_preprocessor,
-        image_model_name=config.IMAGE_MODEL_NAME,
-        pretrained=config.PRETRAINED_IMAGE_MODEL,
-        dropout_rate=config.DROPOUT_RATE
-    ).to(device)
-
-    print(model)
-
-    # Create WandB run
-    run = wandb.init(
-        project=config.WANDB_PROJECT_NAME,
-        config={
-            "learning_rate": config.LEARNING_RATE,
-            "epochs": config.EPOCHS,
-            "batch_size": config.BATCH_SIZE,
-            "model_name": config.MODEL_NAME
-        }
-    )
-    
-    # Training loop
 
 
 def evaluate(

@@ -219,50 +219,6 @@ def create_dataloaders(
     }
 
 
-def create_inference_dataloader(
-    csv_path: str,
-    images_dir: str,
-    batch_size: int = 32,
-    num_workers: int = 4,
-    image_size: Tuple[int, int] = (224, 224),
-    mean: list = [0.485, 0.456, 0.406],
-    std: list = [0.229, 0.224, 0.225]
-) -> DataLoader:
-    """
-    Create a dataloader for inference (no price labels needed).
-    
-    Args:
-        csv_path: Path to CSV file
-        images_dir: Directory containing images
-        batch_size: Batch size
-        num_workers: Number of workers
-        image_size: Target image size
-        mean: Normalization mean
-        std: Normalization std
-    
-    Returns:
-        DataLoader for inference
-    """
-    dataset = MultimodalPriceDataset(
-        csv_path=csv_path,
-        images_dir=images_dir,
-        transform=get_transforms('test', image_size, mean, std),
-        mode='test',
-        log_transform_price=False
-    )
-    
-    loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-        drop_last=False
-    )
-    
-    return loader
-
-
 def collate_fn(batch):
     """
     Custom collate function for batching multimodal data.
