@@ -8,6 +8,7 @@ import torch.optim as optim
 from pathlib import Path
 from tqdm import tqdm
 import wandb
+import argparse
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent))
@@ -17,7 +18,15 @@ from src.data import create_dataloaders
 from src.utils import TextPreprocessor
 
 
-def train(model, train_loader, text_preprocessor, criterion, optimizer, device, epochs):
+def train(
+    model=None,
+    train_loader=None,
+    text_preprocessor=None,
+    criterion=None,
+    optimizer=None,
+    device=None,
+    epochs=None
+):
     """
     Train for number of epochs.
     
@@ -33,31 +42,6 @@ def train(model, train_loader, text_preprocessor, criterion, optimizer, device, 
     Returns:
         Average training loss
     """
-    
-
-
-def evaluate(model, data_loader, text_preprocessor, criterion, device):
-    """
-    evaluate the model.
-    
-    Args:
-        model: The neural network model
-        data_loader: data loader
-        text_preprocessor: Text preprocessing utility
-        criterion: Loss function
-        device: Device to run on
-    
-    Returns:
-        Average loss
-    """
-
-
-    
-
-
-def main():
-    """Main training function."""
-    
     print("=" * 80)
     print("Training Multimodal Price Prediction Model")
     print("=" * 80)
@@ -117,20 +101,69 @@ def main():
         }
     )
     
-    # Train
+    # Training loop
+
+
+def evaluate(
+    model=None,
+    data_loader=None,
+    text_preprocessor=None,
+    criterion=None,
+    device=None
+):
+    """
+    evaluate the model.
     
-    # Evaluate on test set
-    if(config.EVALUATE_TEST):
-        print("\nEvaluating on test set...")
-        test_loss = evaluate(
-            model=model,
-            data_loader=test_loader,
-            text_preprocessor=text_preprocessor,
-            criterion=config.LOSS_FUNCTION,
-            device=device
-        )
-        print(f"Test Loss: {test_loss:.4f}")
-        wandb.log({"Test Loss": test_loss})
+    Args:
+        model: The neural network model
+        data_loader: data loader
+        text_preprocessor: Text preprocessing utility
+        criterion: Loss function
+        device: Device to run on
+    
+    Returns:
+        Average loss
+    """
+    # Create WandB run
+    run = wandb.init(
+        project=config.WANDB_PROJECT_NAME,
+        config={
+            "model_name": config.MODEL_NAME
+        }
+    )
+    print("\nEvaluating on test set...")
+    test_loss = evaluate(
+        model=model,
+        data_loader=data_loader,
+        text_preprocessor=text_preprocessor,
+        criterion=config.LOSS_FUNCTION,
+        device=device
+    )
+    print(f"Test Loss: {test_loss:.4f}")
+    wandb.log({"Test Loss": test_loss})
+
+
+def main():
+    '''
+    Main Function which parses arguments and calls relevant functions
+    '''
+    parser = argparse.ArgumentParser(
+        description="Train or evaluate the multimodal price prediction model."
+    )
+    parser.add_argument("--train", action="store_true", help="Run training")
+    parser.add_argument("--evaluate", action="store_true", help="Run evaluation")
+
+    args = parser.parse_args()
+
+    if not (args.train or args.evaluate):
+        parser.print_help()
+        return
+
+    if args.train:
+        train()
+    if args.evaluate:
+        evaluate()
+        
 
 if __name__ == "__main__":
     main()
