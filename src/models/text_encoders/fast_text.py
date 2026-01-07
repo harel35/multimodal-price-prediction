@@ -211,12 +211,12 @@ class FastTextEncoder(nn.Module):
             return stacked.mean(dim=0)
         return stacked.max(dim=0).values
 
-    def forward(self, texts: Union[str, List[str]]) -> torch.Tensor:
+    def forward(self, texts: Union[str, List[str], List[List[str]]]) -> torch.Tensor:
         """
         Forward pass through the FastText encoder.
 
         Args:
-            texts (str or List[str]): Input text(s).
+            texts (str, List[str], or List[List[str]]): Input text(s) or token lists.
 
         Returns:
             torch.Tensor: Encoded text features of shape (batch, output_dim).
@@ -230,10 +230,21 @@ class FastTextEncoder(nn.Module):
         if not isinstance(texts, (list, tuple)):
             raise TypeError("texts must be a string or a list/tuple of strings.")
 
+        is_tokenized = len(texts) > 0 and isinstance(texts[0], (list, tuple))
+        if is_tokenized and self.lowercase:
+            texts = [[str(token).lower() for token in tokens] for tokens in texts]
+
         if self.pooling_type == 'sentence':
-            features = torch.stack([self._sentence_vector(text) for text in texts], dim=0)
+            if is_tokenized:
+                joined = [" ".join(tokens) for tokens in texts]
+                features = torch.stack([self._sentence_vector(text) for text in joined], dim=0)
+            else:
+                features = torch.stack([self._sentence_vector(text) for text in texts], dim=0)
         else:
-            features = torch.stack([self._pool_tokens(self._tokenize(text)) for text in texts], dim=0)
+            if is_tokenized:
+                features = torch.stack([self._pool_tokens(tokens) for tokens in texts], dim=0)
+            else:
+                features = torch.stack([self._pool_tokens(self._tokenize(text)) for text in texts], dim=0)
 
         device = self._device_tensor.device
         features = features.to(device=device, dtype=torch.float32)

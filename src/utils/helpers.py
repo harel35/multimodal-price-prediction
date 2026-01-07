@@ -126,6 +126,9 @@ def visualize_batch(
         std: Normalization std
         save_path: Optional path to save figure
     """
+    if isinstance(texts, dict):
+        texts = ["<tokenized>"] * len(images)
+
     num_samples = min(num_samples, len(images))
     
     fig, axes = plt.subplots(2, (num_samples + 1) // 2, figsize=figsize)
@@ -144,7 +147,10 @@ def visualize_batch(
         axes[idx].axis('off')
         
         # Title with text and price
-        text_short = texts[idx][:50] + '...' if len(texts[idx]) > 50 else texts[idx]
+        text_item = texts[idx]
+        if isinstance(text_item, (list, tuple)):
+            text_item = " ".join(text_item)
+        text_short = text_item[:50] + '...' if len(text_item) > 50 else text_item
         title = f"{text_short}\nTrue: ${np.exp(prices[idx].item()) - 1:.2f}"
         
         if predictions is not None:

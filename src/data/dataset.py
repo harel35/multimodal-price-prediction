@@ -155,8 +155,8 @@ class MultimodalPriceDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         
-        # Process text
-        text = self._create_text_representation(row['catalog_content'])
+        # Use raw text; tokenization happens in the text encoder.
+        text = str(row['catalog_content'])
         
         # Process price (target)
         price = float(row['price'])

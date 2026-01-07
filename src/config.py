@@ -31,7 +31,23 @@ IMAGE_MEAN = [0.485, 0.456, 0.406]  # ImageNet mean
 IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 
 # Text parameters
-MAX_TEXT_LENGTH = 512
+TEXT_ENCODER = "bert"  # Options: "bert", "clip", "fasttext"
+TEXT_ENCODER_CONFIGS = {
+    "bert": {
+        "tokenizer_name": "bert-base-uncased",
+        "max_length": 512
+    },
+    "clip": {
+        "tokenizer_name": "openai/clip-vit-base-patch32",
+        "max_length": 77
+    },
+    "fasttext": {
+        "tokenizer_name": None,
+        "max_length": None,
+        "lowercase": True
+    }
+}
+TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
 TEXT_EMBEDDING_DIM = 768  # BERT base dimension
 
 # Training parameters

@@ -15,7 +15,6 @@ sys.path.append(str(Path(__file__).parent))
 
 from src import config
 from src.data import create_dataloaders
-from src.utils import TextPreprocessor
 
 
 def train(
@@ -63,12 +62,16 @@ def train(
         random_seed=config.RANDOM_SEED,
         image_size=config.IMAGE_SIZE,
         mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD
+        std=config.IMAGE_STD,
+        text_encoder=config.TEXT_ENCODER,
+        text_encoder_config=config.TEXT_ENCODER_CONFIG
     )
     
     train_loader = dataloaders['train']
     val_loader = dataloaders['val']
     
+    if (config.TEXT_ENCODER == 'bert'):
+        pass
     
 
 

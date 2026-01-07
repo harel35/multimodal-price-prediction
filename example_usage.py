@@ -3,9 +3,9 @@ Example script demonstrating how to use the dataset and dataloader.
 
 This script shows:
 1. How to load and inspect the dataset
-2. How to create dataloaders
+2. How to create dataloaders with encoder-specific tokenization
 3. How to iterate through batches
-4. How to use the text preprocessor
+4. How to inspect tokenized text inputs
 """
 import sys
 import torch
@@ -16,7 +16,6 @@ sys.path.append(str(Path(__file__).parent))
 
 from src import config
 from src.data import create_dataloaders
-from src.utils import TextPreprocessor
 
 
 def main():
@@ -50,7 +49,9 @@ def main():
         random_seed=config.RANDOM_SEED,
         image_size=config.IMAGE_SIZE,
         mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD
+        std=config.IMAGE_STD,
+        text_encoder=config.TEXT_ENCODER,
+        text_encoder_config=config.TEXT_ENCODER_CONFIG
     )
     
     train_loader = dataloaders['train']
@@ -62,38 +63,30 @@ def main():
     print(f"  Val batches: {len(val_loader)}")
     print(f"  Test batches: {len(test_loader)}")
     
-    # Initialize text preprocessor
-    print("\n" + "=" * 80)
-    print("Initializing Text Preprocessor...")
-    print("=" * 80)
-    
-    text_preprocessor = TextPreprocessor(
-        model_name='bert-base-uncased',
-        max_length=config.MAX_TEXT_LENGTH
-    )
-    print("Text preprocessor initialized with BERT tokenizer")
-    
     # Inspect a batch
     print("\n" + "=" * 80)
     print("Inspecting Training Batch...")
     print("=" * 80)
     
-    for batch_idx, (images, texts, prices, metadata) in enumerate(train_loader):
+    for batch_idx, (images, text_inputs, prices, metadata) in enumerate(train_loader):
         print(f"\nBatch {batch_idx + 1}:")
         print(f"  Images shape: {images.shape}")
-        print(f"  Number of texts: {len(texts)}")
+        print(f"  Number of texts: {len(metadata)}")
         print(f"  Prices shape: {prices.shape}")
         print(f"  Number of metadata items: {len(metadata)}")
         
         # Show sample text
         print(f"\n  Sample text (first item):")
-        print(f"    Raw: {texts[0][:100]}...")
+        raw_text = metadata[0].get("raw_text", "")
+        print(f"    Raw: {raw_text[:100]}...")
         
-        # Encode texts
-        encoded = text_preprocessor.encode_batch(texts)
-        print(f"\n  Encoded text shapes:")
-        print(f"    Input IDs: {encoded['input_ids'].shape}")
-        print(f"    Attention mask: {encoded['attention_mask'].shape}")
+        if isinstance(text_inputs, dict):
+            print(f"\n  Encoded text shapes:")
+            print(f"    Input IDs: {text_inputs['input_ids'].shape}")
+            print(f"    Attention mask: {text_inputs['attention_mask'].shape}")
+        else:
+            print(f"\n  Tokenized text sample:")
+            print(f"    Tokens: {text_inputs[0][:10]}")
         
         # Show price statistics
         print(f"\n  Batch price statistics:")
@@ -112,6 +105,8 @@ def main():
         # Show sample metadata
         print(f"\n  Sample metadata (first item):")
         for key, value in metadata[0].items():
+            if key == "raw_text":
+                value = value[:100] + "..." if len(value) > 100 else value
             print(f"    {key}: {value}")
         
         # Only process first batch for demo
@@ -122,10 +117,10 @@ def main():
     print("Inspecting Validation Batch...")
     print("=" * 80)
     
-    for batch_idx, (images, texts, prices, metadata) in enumerate(val_loader):
+    for batch_idx, (images, text_inputs, prices, metadata) in enumerate(val_loader):
         print(f"\nValidation Batch {batch_idx + 1}:")
         print(f"  Images shape: {images.shape}")
-        print(f"  Texts count: {len(texts)}")
+        print(f"  Texts count: {len(metadata)}")
         print(f"  Prices shape: {prices.shape}")
         
         # Only process first batch

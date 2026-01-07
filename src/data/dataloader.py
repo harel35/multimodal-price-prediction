@@ -4,13 +4,31 @@ DataLoader utilities for creating train, validation, and test loaders.
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional, Callable, Any, List
 import torch
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 import torchvision.transforms as transforms
+from transformers import AutoTokenizer
 
 from .dataset import MultimodalPriceDataset
+
+
+_TEXT_ENCODER_DEFAULTS = {
+    "bert": {
+        "tokenizer_name": "bert-base-uncased",
+        "max_length": 512
+    },
+    "clip": {
+        "tokenizer_name": "openai/clip-vit-base-patch32",
+        "max_length": 77
+    },
+    "fasttext": {
+        "tokenizer_name": None,
+        "max_length": None,
+        "lowercase": True
+    }
+}
 
 
 def get_transforms(mode: str = 'train', image_size: Tuple[int, int] = (224, 224),
@@ -91,6 +109,98 @@ def split_dataset_indices(
     return train_indices, val_indices, test_indices
 
 
+def _resolve_text_encoder_config(
+    text_encoder: str,
+    text_encoder_config: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Resolve text encoder config with defaults for the chosen encoder.
+    """
+    encoder_key = (text_encoder or "").lower()
+    if encoder_key not in _TEXT_ENCODER_DEFAULTS:
+        raise ValueError(
+            f"Unknown text encoder '{text_encoder}'. "
+            f"Choose from {sorted(_TEXT_ENCODER_DEFAULTS.keys())}."
+        )
+
+    resolved = dict(_TEXT_ENCODER_DEFAULTS[encoder_key])
+    if text_encoder_config:
+        for key, value in text_encoder_config.items():
+            if value is not None:
+                resolved[key] = value
+
+    return resolved
+
+
+def _build_text_tokenizer(
+    text_encoder: str,
+    text_encoder_config: Dict[str, Any]
+) -> Callable[[List[str]], Any]:
+    """
+    Build a tokenizer callable for the selected text encoder.
+    """
+    encoder_key = (text_encoder or "").lower()
+
+    if encoder_key in {"bert", "clip"}:
+        tokenizer_name = text_encoder_config.get("tokenizer_name")
+        max_length = text_encoder_config.get("max_length")
+        if not tokenizer_name:
+            raise ValueError(f"tokenizer_name must be set for text encoder '{encoder_key}'.")
+
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
+
+        def tokenize(texts: List[str]) -> Dict[str, torch.Tensor]:
+            return tokenizer(
+                texts,
+                padding=True,
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt"
+            )
+
+        return tokenize
+
+    if encoder_key == "fasttext":
+        lowercase = bool(text_encoder_config.get("lowercase", True))
+
+        def tokenize(texts: List[str]) -> List[List[str]]:
+            tokens = []
+            for text in texts:
+                cleaned = text.lower().strip() if lowercase else text.strip()
+                tokens.append(cleaned.split())
+            return tokens
+
+        return tokenize
+
+    raise ValueError(f"Unsupported text encoder '{text_encoder}'.")
+
+
+def build_collate_fn(
+    text_encoder: str = "bert",
+    text_encoder_config: Optional[Dict[str, Any]] = None
+) -> Callable:
+    """
+    Build a collate function that tokenizes text per text encoder.
+    """
+    resolved_config = _resolve_text_encoder_config(text_encoder, text_encoder_config)
+    tokenizer = _build_text_tokenizer(text_encoder, resolved_config)
+
+    def collate(batch):
+        images = torch.stack([item[0] for item in batch])
+        raw_texts = [item[1] for item in batch]
+        prices = torch.stack([item[2] for item in batch])
+        metadata = [
+            {**item[3], "raw_text": raw_texts[idx]}
+            for idx, item in enumerate(batch)
+        ]
+        text_inputs = tokenizer(raw_texts)
+        return images, text_inputs, prices, metadata
+
+    return collate
+
+
 def create_dataloaders(
     csv_path: str,
     images_dir: str,
@@ -103,6 +213,8 @@ def create_dataloaders(
     image_size: Tuple[int, int] = (224, 224),
     mean: list = [0.485, 0.456, 0.406],
     std: list = [0.229, 0.224, 0.225],
+    text_encoder: str = "bert",
+    text_encoder_config: Optional[Dict[str, Any]] = None,
     pin_memory: bool = True
 ) -> Dict[str, DataLoader]:
     """
@@ -120,6 +232,8 @@ def create_dataloaders(
         image_size: Target image size
         mean: Normalization mean
         std: Normalization std
+        text_encoder: Text encoder type ('bert', 'clip', 'fasttext')
+        text_encoder_config: Encoder-specific tokenizer config
         pin_memory: Whether to use pinned memory (faster for GPU)
     
     Returns:
@@ -171,6 +285,12 @@ def create_dataloaders(
     train_subset = Subset(train_dataset, train_indices)
     val_subset = Subset(val_dataset, val_indices)
     test_subset = Subset(test_dataset, test_indices)
+
+    # Build collate function with tokenizer
+    text_collate_fn = build_collate_fn(
+        text_encoder=text_encoder,
+        text_encoder_config=text_encoder_config
+    )
     
     # Create dataloaders
     train_loader = DataLoader(
@@ -179,6 +299,7 @@ def create_dataloaders(
         shuffle=True,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        collate_fn=text_collate_fn,
         drop_last=True  # Drop last incomplete batch for training
     )
     
@@ -188,6 +309,7 @@ def create_dataloaders(
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        collate_fn=text_collate_fn,
         drop_last=False
     )
     
@@ -197,6 +319,7 @@ def create_dataloaders(
         shuffle=False,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        collate_fn=text_collate_fn,
         drop_last=False
     )
     
@@ -215,7 +338,7 @@ def create_dataloaders(
 
 def collate_fn(batch):
     """
-    Custom collate function for batching multimodal data.
+    Custom collate function for batching multimodal data (raw text).
     
     Args:
         batch: List of tuples (image, text, price, metadata)
@@ -226,6 +349,9 @@ def collate_fn(batch):
     images = torch.stack([item[0] for item in batch])
     texts = [item[1] for item in batch]
     prices = torch.stack([item[2] for item in batch])
-    metadata = [item[3] for item in batch]
+    metadata = [
+        {**item[3], "raw_text": texts[idx]}
+        for idx, item in enumerate(batch)
+    ]
     
     return images, texts, prices, metadata
