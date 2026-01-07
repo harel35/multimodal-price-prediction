@@ -103,7 +103,6 @@ def create_dataloaders(
     image_size: Tuple[int, int] = (224, 224),
     mean: list = [0.485, 0.456, 0.406],
     std: list = [0.229, 0.224, 0.225],
-    log_transform_price: bool = False,
     pin_memory: bool = True
 ) -> Dict[str, DataLoader]:
     """
@@ -121,7 +120,6 @@ def create_dataloaders(
         image_size: Target image size
         mean: Normalization mean
         std: Normalization std
-        log_transform_price: Whether to log-transform prices
         pin_memory: Whether to use pinned memory (faster for GPU)
     
     Returns:
@@ -132,8 +130,7 @@ def create_dataloaders(
         csv_path=csv_path,
         images_dir=images_dir,
         transform=None,  # We'll apply transforms per split
-        mode='full',
-        log_transform_price=log_transform_price
+        mode='full'
     )
     
     # Split indices
@@ -153,24 +150,21 @@ def create_dataloaders(
         csv_path=csv_path,
         images_dir=images_dir,
         transform=get_transforms('train', image_size, mean, std),
-        mode='train',
-        log_transform_price=log_transform_price
+        mode='train'
     )
     
     val_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
         transform=get_transforms('val', image_size, mean, std),
-        mode='val',
-        log_transform_price=log_transform_price
+        mode='val'
     )
     
     test_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
         transform=get_transforms('test', image_size, mean, std),
-        mode='test',
-        log_transform_price=log_transform_price
+        mode='test'
     )
     
     # Create subsets

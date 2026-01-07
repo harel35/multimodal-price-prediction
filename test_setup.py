@@ -85,8 +85,7 @@ def test_dataset_creation():
             csv_path=str(config.CSV_PATH),
             images_dir=str(config.IMAGES_DIR),
             transform=transform,
-            mode='test',
-            log_transform_price=True
+            mode='test'
         )
         
         print(f"  ✓ Dataset created with {len(dataset)} samples")

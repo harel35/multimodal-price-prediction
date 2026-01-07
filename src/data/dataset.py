@@ -29,8 +29,7 @@ class MultimodalPriceDataset(Dataset):
         csv_path: str,
         images_dir: str,
         transform: Optional[transforms.Compose] = None,
-        mode: str = 'train',
-        log_transform_price: bool = True
+        mode: str = 'train'
     ):
         """
         Args:
@@ -38,13 +37,11 @@ class MultimodalPriceDataset(Dataset):
             images_dir: Directory containing images
             transform: Torchvision transforms for images
             mode: 'train', 'val', or 'test'
-            log_transform_price: Whether to apply log transform to prices
         """
         self.csv_path = csv_path
         self.images_dir = Path(images_dir)
         self.transform = transform
         self.mode = mode
-        self.log_transform_price = log_transform_price
         
         # Load data
         self.df = pd.read_csv(csv_path)
@@ -144,7 +141,7 @@ class MultimodalPriceDataset(Dataset):
         Returns:
             image: Preprocessed image tensor
             text: Text representation
-            price: Target price (log-transformed if enabled)
+            price: Target price
             metadata: Dictionary with additional info
         """
         row = self.df.iloc[idx]
@@ -163,10 +160,6 @@ class MultimodalPriceDataset(Dataset):
         
         # Process price (target)
         price = float(row['price'])
-        if self.log_transform_price:
-            # Log1p for better distribution
-            price = np.log1p(price)
-        
         price = torch.tensor(price, dtype=torch.float32)
         
         # Metadata

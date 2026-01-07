@@ -50,8 +50,7 @@ def main():
         random_seed=config.RANDOM_SEED,
         image_size=config.IMAGE_SIZE,
         mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        log_transform_price=False
+        std=config.IMAGE_STD
     )
     
     train_loader = dataloaders['train']
@@ -97,7 +96,7 @@ def main():
         print(f"    Attention mask: {encoded['attention_mask'].shape}")
         
         # Show price statistics
-        print(f"\n  Batch price statistics (log-transformed):")
+        print(f"\n  Batch price statistics:")
         print(f"    Min: {prices.min().item():.4f}")
         print(f"    Max: {prices.max().item():.4f}")
         print(f"    Mean: {prices.mean().item():.4f}")

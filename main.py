@@ -63,8 +63,7 @@ def train(
         random_seed=config.RANDOM_SEED,
         image_size=config.IMAGE_SIZE,
         mean=config.IMAGE_MEAN,
-        std=config.IMAGE_STD,
-        log_transform_price=False
+        std=config.IMAGE_STD
     )
     
     train_loader = dataloaders['train']
