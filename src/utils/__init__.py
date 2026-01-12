@@ -19,6 +19,7 @@ from .helpers import (
     get_device,
     create_exp_directory
 )
+from .metrics import smape_loss
 
 __all__ = [
     'TextPreprocessor',
@@ -32,5 +33,6 @@ __all__ = [
     'calculate_metrics',
     'print_metrics',
     'get_device',
-    'create_exp_directory'
+    'create_exp_directory',
+    'smape_loss'
 ]
