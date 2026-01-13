@@ -152,13 +152,14 @@ def _build_text_tokenizer(
             tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
 
         def tokenize(texts: List[str]) -> Dict[str, torch.Tensor]:
-            return tokenizer(
+            encoded = tokenizer(
                 texts,
                 padding=True,
                 truncation=True,
                 max_length=max_length,
                 return_tensors="pt"
             )
+            return dict(encoded)
 
         return tokenize
 
