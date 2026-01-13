@@ -35,7 +35,7 @@ IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
 IMAGE_ENCODER_VARIANT = None  # Uses encoder default if None
 IMAGE_ENCODER_PRETRAINED = True
 IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
-IMAGE_ENCODER_FREEZE = False
+IMAGE_ENCODER_FREEZE = True
 IMAGE_DROPOUT_RATE = 0.3
 
 # Text parameters
@@ -58,7 +58,7 @@ TEXT_ENCODER_CONFIGS = {
 TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
 TEXT_EMBEDDING_DIM = 768  # BERT base dimension
 TEXT_ENCODER_VARIANT = "bert-base-uncased"
-TEXT_ENCODER_FREEZE = False
+TEXT_ENCODER_FREEZE = True
 TEXT_DROPOUT_RATE = 0.1
 
 # FastText parameters
@@ -87,6 +87,7 @@ CHECKPOINT_PATH = CHECKPOINT_DIR / "best_model.pt"
 
 # Weights & Biases
 WANDB_PROJECT_NAME = "deep-learning-project"
+WANDB_ENTITY = "deep-learning-project-technion"
 WANDB_RUN_NAME = None
 WANDB_MODE = None
 

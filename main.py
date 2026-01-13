@@ -314,6 +314,9 @@ def train(
                 **model_config
             }
         }
+        wandb_entity = getattr(config, "WANDB_ENTITY", None)
+        if wandb_entity:
+            wandb_kwargs["entity"] = wandb_entity
         run_name = getattr(config, "WANDB_RUN_NAME", None)
         if run_name:
             wandb_kwargs["name"] = run_name
@@ -484,6 +487,9 @@ def evaluate(
                     "split": split_name
                 }
             }
+            wandb_entity = getattr(config, "WANDB_ENTITY", None)
+            if wandb_entity:
+                wandb_kwargs["entity"] = wandb_entity
             run_name = getattr(config, "WANDB_RUN_NAME", None)
             if run_name:
                 wandb_kwargs["name"] = run_name
