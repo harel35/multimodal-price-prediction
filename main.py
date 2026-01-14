@@ -212,6 +212,9 @@ def _build_model() -> Tuple[nn.Module, Dict[str, Any]]:
         text_dim=text_encoder.output_dim
     )
     model = MultimodalPriceModel(image_encoder, text_encoder, fusion_head)
+    print("\nEmbedding dimensions:")
+    print(f"  Image: {image_encoder.output_dim}")
+    print(f"  Text: {text_encoder.output_dim}")
     model_config = {**image_config, **text_config, **fusion_config}
     return model, model_config
 
