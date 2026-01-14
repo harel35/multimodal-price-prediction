@@ -12,7 +12,7 @@ dependencies:
       - torch==2.9.0
       - torchvision==0.24.0
       - torchaudio==2.9.0
-      - transformers==4.45.2
+      - transformers==4.56.0
       - safetensors==0.4.3
       - pandas==2.2.2
       - numpy==1.26.4
@@ -20,6 +20,6 @@ dependencies:
       - Pillow==10.4.0
       - matplotlib==3.9.0
       - tqdm==4.66.4
-      - wandb==0.17.8
+      - wandb==0.24.0
       - ftfy==6.2.0
       - regex==2024.5.15
