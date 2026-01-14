@@ -6,3 +6,7 @@
 
 # WandB files
 wandb/
+
+# FastText model files
+*.bin
+*.bin.gz
