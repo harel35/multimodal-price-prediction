@@ -40,7 +40,7 @@ IMAGE_DROPOUT_RATE = 0.3
 
 # Text parameters
 TEXT_ENCODER = "bert"  # Options: "bert", "clip", "fasttext"
-TEXT_ENCODER_CONFIGS = {
+TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
     "bert": {
         "tokenizer_name": "bert-base-uncased",
         "max_length": 512
