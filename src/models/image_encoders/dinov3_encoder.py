@@ -631,15 +631,24 @@ class DINOv3Encoder(nn.Module):
 def create_dinov3_encoder(
     variant: str = 'dinov3-vits16-pretrain-lvd1689m',
     pretrained: bool = True,
+    pretrained_name: Optional[str] = None,
     output_dim: Optional[int] = None,
     **kwargs
 ) -> DINOv3Encoder:
     """
     Factory function to create a DINOv3 encoder with common configurations.
+
+    Args:
+        variant (str): DINOv3 variant.
+        pretrained (bool): Whether to use pretrained weights.
+        pretrained_name (Optional[str]): Custom pretrained model name/path.
+        output_dim (Optional[int]): Output feature dimension.
+        **kwargs: Additional arguments passed to DINOv3Encoder.
     """
     return DINOv3Encoder(
         variant=variant,
         pretrained=pretrained,
+        pretrained_name=pretrained_name,
         output_dim=output_dim,
         **kwargs
     )

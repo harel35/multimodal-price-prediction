@@ -74,6 +74,7 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
     encoder_name = getattr(config, "IMAGE_ENCODER", "resnet").lower()
     variant = getattr(config, "IMAGE_ENCODER_VARIANT", None)
     pretrained = getattr(config, "IMAGE_ENCODER_PRETRAINED", True)
+    pretrained_name = getattr(config, "IMAGE_ENCODER_PRETRAINED_NAME", None)
     output_dim = getattr(config, "IMAGE_EMBEDDING_DIM", None)
     freeze_backbone = getattr(config, "IMAGE_ENCODER_FREEZE", False)
     dropout_rate = getattr(config, "IMAGE_DROPOUT_RATE", getattr(config, "DROPOUT_RATE", 0.3))
@@ -83,6 +84,7 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_resnet_encoder(
             variant=variant,
             pretrained=pretrained,
+            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -92,6 +94,7 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_vit_encoder(
             variant=variant,
             pretrained=pretrained,
+            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -101,6 +104,7 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_dinov3_encoder(
             variant=variant,
             pretrained=pretrained,
+            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate

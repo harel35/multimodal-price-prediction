@@ -557,15 +557,24 @@ class ViTEncoder(nn.Module):
 def create_vit_encoder(
     variant: str = 'vit-base-patch16-224',
     pretrained: bool = True,
+    pretrained_name: Optional[str] = None,
     output_dim: Optional[int] = None,
     **kwargs
 ) -> ViTEncoder:
     """
     Factory function to create a ViT encoder with common configurations.
+
+    Args:
+        variant (str): ViT variant.
+        pretrained (bool): Whether to use pretrained weights.
+        pretrained_name (Optional[str]): Custom pretrained model name/path.
+        output_dim (Optional[int]): Output feature dimension.
+        **kwargs: Additional arguments passed to ViTEncoder.
     """
     return ViTEncoder(
         variant=variant,
         pretrained=pretrained,
+        pretrained_name=pretrained_name,
         output_dim=output_dim,
         **kwargs
     )
