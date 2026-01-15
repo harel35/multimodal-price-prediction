@@ -32,14 +32,15 @@ IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 
 # Image encoder parameters
 IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
-IMAGE_ENCODER_VARIANT = None  # Uses encoder default if None
+IMAGE_ENCODER_VARIANT = "resnet-50"
 IMAGE_ENCODER_PRETRAINED = True
+IMAGE_ENCODER_PRETRAINED_NAME = "microsoft/resnet-50"
 IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
 IMAGE_ENCODER_FREEZE = True
-IMAGE_DROPOUT_RATE = 0.3
+IMAGE_DROPOUT_RATE = 0.1
 
 # Text parameters
-TEXT_ENCODER = "bert"  # Options: "bert", "clip", "fasttext"
+TEXT_ENCODER = "fasttext"  # Options: "bert", "clip", "fasttext"
 TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
     "bert": {
         "tokenizer_name": "bert-base-uncased",
@@ -56,27 +57,27 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
     }
 }
 TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
-TEXT_EMBEDDING_DIM = 768  # BERT base dimension
-TEXT_ENCODER_VARIANT = "bert-base-uncased"
+TEXT_EMBEDDING_DIM = 300
+TEXT_ENCODER_VARIANT = "cc.en.300"
 TEXT_ENCODER_FREEZE = True
 TEXT_DROPOUT_RATE = 0.1
 
 # FastText parameters
 FASTTEXT_VARIANT = "cc.en.300"
-FASTTEXT_MODEL_PATH = None
+FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/ProjectDeepLearning/cc.en.300.bin"
 
 # Training parameters
 BATCH_SIZE = 32
 NUM_WORKERS = 4
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
-NUM_EPOCHS = 1
+NUM_EPOCHS = 10
 EARLY_STOPPING_PATIENCE = 10
 
 # Model parameters
-DROPOUT_RATE = 0.3
+DROPOUT_RATE = 0.2
 FUSION_METHOD = "concat"  # Options: "concat", "attention", "addition"
-FUSION_HIDDEN_DIMS = (512, 256)
+FUSION_HIDDEN_DIMS = (2048, 1024, 512, 256)
 FUSION_ACTIVATION = "relu"
 FUSION_USE_BATCH_NORM = True
 FUSION_DIM = None
