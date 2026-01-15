@@ -62,6 +62,35 @@ def _resolve_device(device: Optional[torch.device] = None) -> torch.device:
     return torch.device("cpu")
 
 
+def _serialize_for_wandb(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _serialize_for_wandb(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize_for_wandb(val) for val in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _collect_wandb_config(
+    model_config: Optional[Dict[str, Any]] = None,
+    runtime_config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    base_config = {
+        name: getattr(config, name)
+        for name in dir(config)
+        if name.isupper()
+    }
+    payload = _serialize_for_wandb(base_config)
+    if model_config:
+        payload["resolved_model"] = _serialize_for_wandb(model_config)
+    if runtime_config:
+        payload["runtime"] = _serialize_for_wandb(runtime_config)
+    return payload
+
+
 def _move_text_inputs(text_inputs, device: torch.device):
     if isinstance(text_inputs, dict):
         return {key: value.to(device) for key, value in text_inputs.items()}
@@ -311,15 +340,18 @@ def train(
     print(f"\nTrainable parameters: {trainable_params:,}")
 
     if wandb.run is None:
+        runtime_config = {
+            "epochs": epochs,
+            "trainable_params": trainable_params,
+            "optimizer": optimizer.__class__.__name__,
+            "device": str(device)
+        }
         wandb_kwargs = {
             "project": getattr(config, "WANDB_PROJECT_NAME", "deep-learning-project"),
-            "config": {
-                "batch_size": config.BATCH_SIZE,
-                "learning_rate": getattr(config, "LEARNING_RATE", 1e-4),
-                "epochs": epochs,
-                "trainable_params": trainable_params,
-                **model_config
-            }
+            "config": _collect_wandb_config(
+                model_config=model_config,
+                runtime_config=runtime_config
+            )
         }
         wandb_entity = getattr(config, "WANDB_ENTITY", None)
         if wandb_entity:
@@ -490,9 +522,10 @@ def evaluate(
         if wandb.run is None:
             wandb_kwargs = {
                 "project": getattr(config, "WANDB_PROJECT_NAME", "multimodal-price-prediction"),
-                "config": {
-                    "split": split_name
-                }
+                "config": _collect_wandb_config(runtime_config={
+                    "split": split_name,
+                    "device": str(device)
+                })
             }
             wandb_entity = getattr(config, "WANDB_ENTITY", None)
             if wandb_entity:
