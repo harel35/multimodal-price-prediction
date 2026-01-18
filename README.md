@@ -118,7 +118,6 @@ All configuration lives in `ProjectDeepLearning/src/config.py`. Use the tables b
 | `LEARNING_RATE` | Optimizer learning rate. |
 | `WEIGHT_DECAY` | Optimizer weight decay. |
 | `NUM_EPOCHS` | Training epochs. |
-| `EARLY_STOPPING_PATIENCE` | Patience for early stopping (if enabled). |
 
 ### Fusion Head
 
