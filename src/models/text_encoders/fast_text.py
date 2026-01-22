@@ -137,7 +137,7 @@ class FastTextEncoder(nn.Module):
         if self.pretrained:
             model_path = self._resolve_model_path()
             try:
-                model = fasttext.load_model(model_path)
+                model = fasttext.load_model(str(model_path))
                 print(f"Loaded pretrained FastText model from {model_path}")
             except Exception as e:
                 raise RuntimeError(

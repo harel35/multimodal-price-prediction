@@ -22,7 +22,7 @@ class MLPFusion(nn.Module):
         text_dim (int): Dimension of text features.
         hidden_dims (Iterable[int]): Hidden layer sizes for the MLP.
         output_dim (int): Output dimension, default 1 for price prediction.
-        fusion_method (str): 'concat', 'addition', or 'attention'.
+        fusion_method (str): 'concat', 'addition', 'attention', or 'gated'.
         dropout_rate (float): Dropout rate applied between layers.
         activation (str): Activation name: 'relu', 'gelu', or 'tanh'.
         use_batch_norm (bool): Whether to add BatchNorm between layers.
@@ -56,7 +56,7 @@ class MLPFusion(nn.Module):
         self.fusion_dim = fusion_dim
         self.output_activation = output_activation.lower() if output_activation else None
 
-        valid_fusion = ['concat', 'addition', 'attention']
+        valid_fusion = ['concat', 'addition', 'attention', 'gated']
         if self.fusion_method not in valid_fusion:
             raise ValueError(
                 f"Invalid fusion method '{fusion_method}'. "
@@ -65,6 +65,7 @@ class MLPFusion(nn.Module):
 
         self.image_proj = nn.Identity()
         self.text_proj = nn.Identity()
+        self.gate = None
 
         fused_dim = self._get_fused_dim()
         self.fused_dim = fused_dim
@@ -72,6 +73,8 @@ class MLPFusion(nn.Module):
         self.mlp = self._build_mlp()
         self.output_layer = nn.Linear(self.hidden_dims[-1] if self.hidden_dims else fused_dim, output_dim)
         self.output_act = self._get_output_activation()
+        if self.fusion_method == 'gated':
+            self.gate = nn.Linear(2 * fused_dim, fused_dim)
 
     def _get_fused_dim(self) -> int:
         """
@@ -84,7 +87,7 @@ class MLPFusion(nn.Module):
             if self.fusion_dim is None:
                 raise ValueError(
                     "fusion_dim must be set when image_dim != text_dim "
-                    "for addition/attention fusion."
+                    "for addition/attention/gated fusion."
                 )
             self.image_proj = nn.Linear(self.image_dim, self.fusion_dim)
             self.text_proj = nn.Linear(self.text_dim, self.fusion_dim)
@@ -147,6 +150,13 @@ class MLPFusion(nn.Module):
 
         if self.fusion_method == 'addition':
             return image_features + text_features
+
+        if self.fusion_method == 'gated':
+            if self.gate is None:
+                raise RuntimeError("Gated fusion requires a gate layer.")
+            merged = torch.cat([image_features, text_features], dim=-1)
+            weights = torch.sigmoid(self.gate(merged))
+            return weights * text_features + (1.0 - weights) * image_features
 
         # attention-based weighting between modalities
         logits = torch.stack([image_features, text_features], dim=1)  # (B, 2, D)
