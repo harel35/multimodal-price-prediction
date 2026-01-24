@@ -92,5 +92,16 @@ WANDB_ENTITY = "deep-learning-project-technion"
 WANDB_RUN_NAME = None
 WANDB_MODE = None
 
+# Qwen evaluation (image-text-to-text)
+QWEN_MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
+QWEN_MAX_NEW_TOKENS = 40
+QWEN_TEMPERATURE = 0.0
+QWEN_TOP_P = 1.0
+QWEN_PROMPT_TEMPLATE = (
+    "Predict the product price as a single number using the image and description. "
+    "Description: {text} "
+    "Only output the number."
+)
+
 # Device
 DEVICE = "cuda"  # cuda or cpu

@@ -10,3 +10,5 @@ wandb/
 # FastText model files
 *.bin
 *.bin.gz
+
+outputs/

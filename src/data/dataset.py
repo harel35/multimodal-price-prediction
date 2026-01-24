@@ -66,9 +66,11 @@ class MultimodalPriceDataset(Dataset):
             # Extract image filename and check if it exists
             image_filename = self._extract_image_filename(row['image_link'])
             image_path = self.images_dir / image_filename
-            
-            if image_path.exists():
-                valid_indices.append(idx)
+            if not image_path.exists():
+                continue
+            if not self._can_open_image(image_path):
+                continue
+            valid_indices.append(idx)
         
         return self.df.loc[valid_indices]
     
@@ -81,15 +83,21 @@ class MultimodalPriceDataset(Dataset):
         filename = image_link.split('/')[-1]
         return filename
     
+    def _can_open_image(self, image_path: Path) -> bool:
+        """Check whether an image can be opened and converted to RGB."""
+        try:
+            with Image.open(image_path) as image:
+                image.convert('RGB')
+            return True
+        except Exception:
+            return False
+
     def _load_image(self, image_path: Path) -> Image.Image:
         """Load and convert image to RGB."""
         try:
-            image = Image.open(image_path).convert('RGB')
-            return image
+            return Image.open(image_path).convert('RGB')
         except Exception as e:
-            print(f"Error loading image {image_path}: {e}")
-            # Return a blank image as fallback
-            return Image.new('RGB', (224, 224), color=(128, 128, 128))
+            raise RuntimeError(f"Error loading image {image_path}: {e}") from e
     
     def _parse_catalog_content(self, catalog_content: str) -> Dict[str, str]:
         """

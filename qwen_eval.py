@@ -2,6 +2,7 @@
 Evaluate Qwen/Qwen2.5-VL-7B-Instruct on the dataset and log metrics to W&B.
 """
 import argparse
+import csv
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -104,6 +105,28 @@ def _init_wandb(config_payload: Dict, run_name: Optional[str]):
     wandb.init(**wandb_kwargs)
 
 
+def _open_predictions_writer(save_path: Optional[str]):
+    if not save_path:
+        return None, None
+    path = Path(save_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    file_handle = path.open("w", newline="", encoding="utf-8")
+    fieldnames = [
+        "dataset_idx",
+        "sample_id",
+        "image_link",
+        "image_filename",
+        "text",
+        "target",
+        "pred",
+        "response",
+        "valid",
+    ]
+    writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
+    writer.writeheader()
+    return file_handle, writer
+
+
 def evaluate_qwen(
     csv_path: str,
     images_dir: str,
@@ -118,6 +141,7 @@ def evaluate_qwen(
     max_samples: Optional[int] = None,
     sample_index: Optional[int] = None,
     show_sample: bool = False,
+    save_predictions_path: Optional[str] = None,
 ):
     set_seed(seed)
     torch_device = _resolve_device(device)
@@ -162,64 +186,44 @@ def evaluate_qwen(
     invalid = 0
     sample_outputs = []
 
-    for idx in tqdm(indices, desc=split, leave=False):
-        image, raw_text, price, metadata = dataset[int(idx)]
-        prompt = _build_prompt(prompt_template, raw_text)
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "image": image},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ]
-        inputs = _prepare_inputs(processor, messages).to(model.device)
+    file_handle, writer = _open_predictions_writer(save_predictions_path)
+    try:
+        for idx in tqdm(indices, desc=split, leave=False):
+            image, raw_text, price, metadata = dataset[int(idx)]
+            prompt = _build_prompt(prompt_template, raw_text)
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": image},
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ]
+            inputs = _prepare_inputs(processor, messages).to(model.device)
 
-        generation_kwargs = {"max_new_tokens": max_new_tokens}
-        if temperature > 0:
-            generation_kwargs.update({
-                "do_sample": True,
-                "temperature": temperature,
-                "top_p": top_p,
-            })
-
-        with torch.inference_mode():
-            outputs = model.generate(**inputs, **generation_kwargs)
-
-        prompt_len = inputs["input_ids"].shape[-1] if "input_ids" in inputs else 0
-        response = processor.decode(
-            outputs[0][prompt_len:],
-            skip_special_tokens=True,
-        ).strip()
-        target = float(price.item())
-        image_link = metadata.get("image_link", "")
-        image_filename = image_link.split("/")[-1] if image_link else ""
-        sample_id = metadata.get("sample_id", None)
-        pred = _extract_price(response)
-        if pred is None:
-            invalid += 1
-            if show_sample:
-                sample_outputs.append({
-                    "dataset_idx": int(idx),
-                    "sample_id": sample_id,
-                    "image_link": image_link,
-                    "image_filename": image_filename,
-                    "text": raw_text,
-                    "target": target,
-                    "pred": None,
-                    "response": response,
+            generation_kwargs = {"max_new_tokens": max_new_tokens}
+            if temperature > 0:
+                generation_kwargs.update({
+                    "do_sample": True,
+                    "temperature": temperature,
+                    "top_p": top_p,
                 })
-            continue
 
-        diff = pred - target
-        mae_sum += abs(diff)
-        mse_sum += diff * diff
-        denom = (abs(pred) + abs(target)) / 2.0
-        smape_sum += abs(diff) / max(denom, 1e-8)
-        count += 1
-        if show_sample:
-            sample_outputs.append({
+            with torch.inference_mode():
+                outputs = model.generate(**inputs, **generation_kwargs)
+
+            prompt_len = inputs["input_ids"].shape[-1] if "input_ids" in inputs else 0
+            response = processor.decode(
+                outputs[0][prompt_len:],
+                skip_special_tokens=True,
+            ).strip()
+            target = float(price.item())
+            image_link = metadata.get("image_link", "")
+            image_filename = image_link.split("/")[-1] if image_link else ""
+            sample_id = metadata.get("sample_id", None)
+            pred = _extract_price(response)
+            row = {
                 "dataset_idx": int(idx),
                 "sample_id": sample_id,
                 "image_link": image_link,
@@ -228,7 +232,28 @@ def evaluate_qwen(
                 "target": target,
                 "pred": pred,
                 "response": response,
-            })
+                "valid": pred is not None,
+            }
+            if writer:
+                writer.writerow(row)
+
+            if pred is None:
+                invalid += 1
+                if show_sample:
+                    sample_outputs.append(row)
+                continue
+
+            diff = pred - target
+            mae_sum += abs(diff)
+            mse_sum += diff * diff
+            denom = (abs(pred) + abs(target)) / 2.0
+            smape_sum += abs(diff) / max(denom, 1e-8)
+            count += 1
+            if show_sample:
+                sample_outputs.append(row)
+    finally:
+        if file_handle:
+            file_handle.close()
 
     if count == 0:
         raise RuntimeError("No valid predictions parsed; metrics cannot be computed.")
@@ -317,6 +342,7 @@ def main():
     parser.add_argument("--seed", type=int, default=getattr(config, "RANDOM_SEED", 42))
     parser.add_argument("--sample-index", type=int, default=None)
     parser.add_argument("--show-sample", action="store_true")
+    parser.add_argument("--save-preds", default=None, help="Write predictions to a CSV file.")
 
     args = parser.parse_args()
 
@@ -334,6 +360,7 @@ def main():
         max_samples=args.max_samples,
         sample_index=args.sample_index,
         show_sample=args.show_sample,
+        save_predictions_path=args.save_preds,
     )
 
 
