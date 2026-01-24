@@ -116,6 +116,8 @@ def evaluate_qwen(
     device: Optional[str] = None,
     seed: int = 42,
     max_samples: Optional[int] = None,
+    sample_index: Optional[int] = None,
+    show_sample: bool = False,
 ):
     set_seed(seed)
     torch_device = _resolve_device(device)
@@ -141,7 +143,14 @@ def evaluate_qwen(
     if split not in split_indices:
         raise ValueError(f"Unsupported split '{split}'. Choose from train/val/test.")
     indices = split_indices[split]
-    if max_samples is not None:
+    if sample_index is not None:
+        if sample_index < 0 or sample_index >= len(indices):
+            raise ValueError(
+                f"sample_index {sample_index} is out of range for split '{split}' "
+                f"(0..{len(indices) - 1})."
+            )
+        indices = [indices[sample_index]]
+    elif max_samples is not None:
         indices = indices[:max_samples]
 
     processor, model = _load_model(model_name, torch_device)
@@ -151,9 +160,10 @@ def evaluate_qwen(
     mse_sum = 0.0
     count = 0
     invalid = 0
+    sample_outputs = []
 
     for idx in tqdm(indices, desc=split, leave=False):
-        image, raw_text, price, _ = dataset[int(idx)]
+        image, raw_text, price, metadata = dataset[int(idx)]
         prompt = _build_prompt(prompt_template, raw_text)
         messages = [
             {
@@ -182,18 +192,43 @@ def evaluate_qwen(
             outputs[0][prompt_len:],
             skip_special_tokens=True,
         ).strip()
+        target = float(price.item())
+        image_link = metadata.get("image_link", "")
+        image_filename = image_link.split("/")[-1] if image_link else ""
+        sample_id = metadata.get("sample_id", None)
         pred = _extract_price(response)
         if pred is None:
             invalid += 1
+            if show_sample:
+                sample_outputs.append({
+                    "dataset_idx": int(idx),
+                    "sample_id": sample_id,
+                    "image_link": image_link,
+                    "image_filename": image_filename,
+                    "text": raw_text,
+                    "target": target,
+                    "pred": None,
+                    "response": response,
+                })
             continue
 
-        target = float(price.item())
         diff = pred - target
         mae_sum += abs(diff)
         mse_sum += diff * diff
         denom = (abs(pred) + abs(target)) / 2.0
         smape_sum += abs(diff) / max(denom, 1e-8)
         count += 1
+        if show_sample:
+            sample_outputs.append({
+                "dataset_idx": int(idx),
+                "sample_id": sample_id,
+                "image_link": image_link,
+                "image_filename": image_filename,
+                "text": raw_text,
+                "target": target,
+                "pred": pred,
+                "response": response,
+            })
 
     if count == 0:
         raise RuntimeError("No valid predictions parsed; metrics cannot be computed.")
@@ -217,6 +252,20 @@ def evaluate_qwen(
     print(f"  RMSE: {metrics['rmse']:.4f}")
     if invalid:
         print(f"  Invalid predictions: {invalid}")
+    if show_sample and sample_outputs:
+        print("\nSample predictions:")
+        for sample in sample_outputs:
+            pred_str = "N/A" if sample["pred"] is None else f"{sample['pred']:.4f}"
+            sample_id = sample.get("sample_id", None)
+            sample_id_str = "N/A" if sample_id is None else str(sample_id)
+            print(f"  idx={sample['dataset_idx']} sample_id={sample_id_str}")
+            print(f"  image_filename: {sample['image_filename']}")
+            print(f"  image_link: {sample['image_link']}")
+            print(f"  text: {sample['text']}")
+            print(f"  target: {sample['target']:.4f}")
+            print(f"  pred: {pred_str}")
+            if sample["pred"] is None:
+                print(f"  raw_response: {sample['response']}")
 
     run_name = getattr(config, "WANDB_RUN_NAME", None) or f"qwen-eval-{split}"
     wandb_payload = {
@@ -228,6 +277,8 @@ def evaluate_qwen(
         "top_p": top_p,
         "device": str(torch_device),
         "max_samples": max_samples,
+        "sample_index": sample_index,
+        "show_sample": show_sample,
         "csv_path": str(csv_path),
         "images_dir": str(images_dir),
         "seed": seed,
@@ -264,6 +315,8 @@ def main():
     parser.add_argument("--top-p", type=float, default=getattr(config, "QWEN_TOP_P", 1.0))
     parser.add_argument("--device", default=None)
     parser.add_argument("--seed", type=int, default=getattr(config, "RANDOM_SEED", 42))
+    parser.add_argument("--sample-index", type=int, default=None)
+    parser.add_argument("--show-sample", action="store_true")
 
     args = parser.parse_args()
 
@@ -279,6 +332,8 @@ def main():
         device=args.device,
         seed=args.seed,
         max_samples=args.max_samples,
+        sample_index=args.sample_index,
+        show_sample=args.show_sample,
     )
 
 
