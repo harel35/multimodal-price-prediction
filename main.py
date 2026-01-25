@@ -212,6 +212,8 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
     dropout_rate = getattr(config, "DROPOUT_RATE", 0.3)
     activation = getattr(config, "FUSION_ACTIVATION", "relu")
     use_batch_norm = getattr(config, "FUSION_USE_BATCH_NORM", True)
+    use_layer_norm = getattr(config, "FUSION_USE_LAYER_NORM", False)
+    use_residual = getattr(config, "FUSION_USE_RESIDUAL", True)
     fusion_dim = getattr(config, "FUSION_DIM", None)
     output_activation = getattr(config, "OUTPUT_ACTIVATION", None)
 
@@ -224,6 +226,8 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
         dropout_rate=dropout_rate,
         activation=activation,
         use_batch_norm=use_batch_norm,
+        use_layer_norm=use_layer_norm,
+        use_residual=use_residual,
         fusion_dim=fusion_dim,
         output_activation=output_activation
     )
@@ -232,7 +236,9 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
         "fusion_method": fusion_method,
         "fusion_hidden_dims": hidden_dims,
         "fusion_dim": fusion_dim,
-        "fusion_output_activation": output_activation
+        "fusion_output_activation": output_activation,
+        "fusion_use_layer_norm": use_layer_norm,
+        "fusion_use_residual": use_residual
     }
     return fusion, fusion_config
 

@@ -6,7 +6,7 @@ It supports simple fusion strategies and a configurable MLP head.
 """
 
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple, Iterable, List
+from typing import Optional, Dict, Any, Tuple, Iterable, List, Callable
 import warnings
 
 import torch
@@ -26,6 +26,8 @@ class MLPFusion(nn.Module):
         dropout_rate (float): Dropout rate applied between layers.
         activation (str): Activation name: 'relu', 'gelu', or 'tanh'.
         use_batch_norm (bool): Whether to add BatchNorm between layers.
+        use_layer_norm (bool): Whether to add LayerNorm between layers.
+        use_residual (bool): Whether to add residual connections when dims match.
         fusion_dim (Optional[int]): Shared dimension for addition/attention if dims differ.
         output_activation (Optional[str]): Output activation: 'relu', 'softplus', 'sigmoid', or None.
     """
@@ -40,6 +42,8 @@ class MLPFusion(nn.Module):
         dropout_rate: float = 0.3,
         activation: str = 'relu',
         use_batch_norm: bool = True,
+        use_layer_norm: bool = False,
+        use_residual: bool = True,
         fusion_dim: Optional[int] = None,
         output_activation: Optional[str] = None
     ):
@@ -53,6 +57,8 @@ class MLPFusion(nn.Module):
         self.dropout_rate = dropout_rate
         self.activation = activation.lower()
         self.use_batch_norm = use_batch_norm
+        self.use_layer_norm = use_layer_norm
+        self.use_residual = use_residual
         self.fusion_dim = fusion_dim
         self.output_activation = output_activation.lower() if output_activation else None
 
@@ -62,6 +68,8 @@ class MLPFusion(nn.Module):
                 f"Invalid fusion method '{fusion_method}'. "
                 f"Must be one of {valid_fusion}"
             )
+        if self.use_batch_norm and self.use_layer_norm:
+            raise ValueError("Enable only one of use_batch_norm or use_layer_norm.")
 
         self.image_proj = nn.Identity()
         self.text_proj = nn.Identity()
@@ -121,18 +129,59 @@ class MLPFusion(nn.Module):
             return nn.Sigmoid()
         raise ValueError(f"Unsupported output activation '{self.output_activation}'")
 
+    def _get_norm(self, dim: int) -> nn.Module:
+        """
+        Select normalization module.
+        """
+        if self.use_batch_norm:
+            return nn.BatchNorm1d(dim)
+        if self.use_layer_norm:
+            return nn.LayerNorm(dim)
+        return nn.Identity()
+
     def _build_mlp(self) -> nn.Module:
         """
         Build MLP head layers.
         """
+        class MLPBlock(nn.Module):
+            def __init__(
+                self,
+                in_dim: int,
+                out_dim: int,
+                activation_factory: Callable[[], nn.Module],
+                norm_factory: Callable[[int], nn.Module],
+                dropout_rate: float,
+                use_residual: bool
+            ):
+                super().__init__()
+                self.use_residual = use_residual and (in_dim == out_dim)
+                self.linear = nn.Linear(in_dim, out_dim)
+                self.norm = norm_factory(out_dim)
+                self.activation = activation_factory()
+                self.dropout = nn.Dropout(p=dropout_rate)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                out = self.linear(x)
+                out = self.norm(out)
+                out = self.activation(out)
+                out = self.dropout(out)
+                if self.use_residual:
+                    out = out + x
+                return out
+
         layers: List[nn.Module] = []
         in_dim = self.fused_dim
         for hidden_dim in self.hidden_dims:
-            layers.append(nn.Linear(in_dim, hidden_dim))
-            if self.use_batch_norm:
-                layers.append(nn.BatchNorm1d(hidden_dim))
-            layers.append(self._get_activation())
-            layers.append(nn.Dropout(p=self.dropout_rate))
+            layers.append(
+                MLPBlock(
+                    in_dim=in_dim,
+                    out_dim=hidden_dim,
+                    activation_factory=self._get_activation,
+                    norm_factory=self._get_norm,
+                    dropout_rate=self.dropout_rate,
+                    use_residual=self.use_residual
+                )
+            )
             in_dim = hidden_dim
         if not layers:
             return nn.Identity()
@@ -202,6 +251,8 @@ class MLPFusion(nn.Module):
             'dropout_rate': self.dropout_rate,
             'activation': self.activation,
             'use_batch_norm': self.use_batch_norm,
+            'use_layer_norm': self.use_layer_norm,
+            'use_residual': self.use_residual,
             'fusion_dim': self.fusion_dim,
             'output_activation': self.output_activation
         }
@@ -327,6 +378,8 @@ class MLPFusion(nn.Module):
             dropout_rate=config.get('dropout_rate', 0.3),
             activation=config.get('activation', 'relu'),
             use_batch_norm=config.get('use_batch_norm', True),
+            use_layer_norm=config.get('use_layer_norm', False),
+            use_residual=config.get('use_residual', True),
             fusion_dim=config.get('fusion_dim'),
             output_activation=config.get('output_activation')
         )
