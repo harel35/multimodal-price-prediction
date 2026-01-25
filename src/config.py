@@ -31,6 +31,7 @@ IMAGE_MEAN = [0.485, 0.456, 0.406]  # ImageNet mean
 IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 
 # Image encoder parameters
+# ResNet
 IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
 IMAGE_ENCODER_VARIANT = "resnet-50"
 IMAGE_ENCODER_PRETRAINED = True
@@ -38,9 +39,24 @@ IMAGE_ENCODER_PRETRAINED_NAME = "microsoft/resnet-50"
 IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
 IMAGE_ENCODER_FREEZE = True
 IMAGE_DROPOUT_RATE = 0.1
+# ViT
+# IMAGE_ENCODER = "vit"
+# IMAGE_ENCODER_VARIANT = "vit-base-patch16-224"
+# IMAGE_ENCODER_PRETRAINED = True
+# IMAGE_ENCODER_PRETRAINED_NAME = "google/vit-base-patch16-224"
+# IMAGE_EMBEDDING_DIM = None
+# IMAGE_ENCODER_FREEZE = True
+# IMAGE_DROPOUT_RATE = 0.1
+# DINOv3
+# IMAGE_ENCODER = "dinov3"
+# IMAGE_ENCODER_VARIANT = "dinov3-vits16-pretrain-lvd1689m"
+# IMAGE_ENCODER_PRETRAINED = True
+# IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vits16-pretrain-lvd1689m"
+# IMAGE_EMBEDDING_DIM = None
+# IMAGE_ENCODER_FREEZE = True
+# IMAGE_DROPOUT_RATE = 0.1
 
 # Text parameters
-TEXT_ENCODER = "fasttext"  # Options: "bert", "clip", "fasttext"
 TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
     "bert": {
         "tokenizer_name": "bert-base-uncased",
@@ -56,15 +72,38 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
         "lowercase": True
     }
 }
+
+TEXT_ENCODER = "fasttext"  # Options: "bert", "clip", "fasttext"
 TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
 TEXT_EMBEDDING_DIM = 300
 TEXT_ENCODER_VARIANT = "cc.en.300"
 TEXT_ENCODER_FREEZE = True
 TEXT_DROPOUT_RATE = 0.1
-
-# FastText parameters
-FASTTEXT_VARIANT = "cc.en.300"
 FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/ProjectDeepLearning/cc.en.300.bin"
+
+# Quick-switch presets (uncomment a block and comment the active settings)
+# BERT
+# TEXT_ENCODER = "bert"
+# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["bert"]
+# TEXT_EMBEDDING_DIM = None
+# TEXT_ENCODER_VARIANT = "bert-base-uncased"
+# TEXT_ENCODER_FREEZE = True
+# TEXT_DROPOUT_RATE = 0.1
+# CLIP
+# TEXT_ENCODER = "clip"
+# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["clip"]
+# TEXT_EMBEDDING_DIM = None
+# TEXT_ENCODER_VARIANT = "clip-vit-base-patch32"
+# TEXT_ENCODER_FREEZE = True
+# TEXT_DROPOUT_RATE = 0.1
+# FastText
+# TEXT_ENCODER = "fasttext"
+# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["fasttext"]
+# TEXT_EMBEDDING_DIM = 300
+# TEXT_ENCODER_VARIANT = "cc.en.300"
+# FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/ProjectDeepLearning/cc.en.300.bin"
+# TEXT_ENCODER_FREEZE = True
+# TEXT_DROPOUT_RATE = 0.1
 
 # Training parameters
 BATCH_SIZE = 32

@@ -98,7 +98,7 @@ All configuration lives in `ProjectDeepLearning/src/config.py`. Use the tables b
 | `TEXT_ENCODER_CONFIGS` | Tokenizer settings per encoder. |
 | `TEXT_ENCODER_CONFIG` | Active tokenizer config selected from `TEXT_ENCODER_CONFIGS`. |
 | `TEXT_EMBEDDING_DIM` | Override text embedding dim (projection). |
-| `TEXT_ENCODER_VARIANT` | Model variant name for BERT/CLIP. |
+| `TEXT_ENCODER_VARIANT` | Model variant name for BERT/CLIP/FastText. |
 | `TEXT_ENCODER_FREEZE` | Freeze text backbone if `True`. |
 | `TEXT_DROPOUT_RATE` | Dropout used in the text encoder. |
 
@@ -106,7 +106,6 @@ All configuration lives in `ProjectDeepLearning/src/config.py`. Use the tables b
 
 | Parameter | Description |
 | --- | --- |
-| `FASTTEXT_VARIANT` | FastText variant name or path string. |
 | `FASTTEXT_MODEL_PATH` | Path to a `.bin` or `.ftz` FastText model. |
 
 ### Training

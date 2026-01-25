@@ -183,7 +183,7 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
             dropout_rate=dropout_rate
         )
     elif encoder_name == "fasttext":
-        variant = getattr(config, "FASTTEXT_VARIANT", "cc.en.300")
+        variant = getattr(config, "TEXT_ENCODER_VARIANT", "cc.en.300")
         model_path = getattr(config, "FASTTEXT_MODEL_PATH", None)
         lowercase = bool(config.TEXT_ENCODER_CONFIG.get("lowercase", True))
         encoder = create_fasttext_encoder(
