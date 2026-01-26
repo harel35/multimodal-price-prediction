@@ -26,19 +26,19 @@ TEST_SPLIT = 0.1
 RANDOM_SEED = 42
 
 # Image parameters
-IMAGE_SIZE = (224, 224)  # Standard size for pretrained models
+IMAGE_SIZE = (256, 256)  # (224,224 for Resnet/ViT, 256,256 for DINOv3)
 IMAGE_MEAN = [0.485, 0.456, 0.406]  # ImageNet mean
 IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 
 # Image encoder parameters
 # ResNet
-IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
-IMAGE_ENCODER_VARIANT = "resnet-50"
-IMAGE_ENCODER_PRETRAINED = True
-IMAGE_ENCODER_PRETRAINED_NAME = "microsoft/resnet-50"
-IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
-IMAGE_ENCODER_FREEZE = True
-IMAGE_DROPOUT_RATE = 0.1
+# IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
+# IMAGE_ENCODER_VARIANT = "resnet-152"
+# IMAGE_ENCODER_PRETRAINED = True
+# IMAGE_ENCODER_PRETRAINED_NAME = "microsoft/resnet-152"
+# IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
+# IMAGE_ENCODER_FREEZE = True
+# IMAGE_DROPOUT_RATE = 0.1
 # ViT
 # IMAGE_ENCODER = "vit"
 # IMAGE_ENCODER_VARIANT = "vit-base-patch16-224"
@@ -48,13 +48,13 @@ IMAGE_DROPOUT_RATE = 0.1
 # IMAGE_ENCODER_FREEZE = True
 # IMAGE_DROPOUT_RATE = 0.1
 # DINOv3
-# IMAGE_ENCODER = "dinov3"
-# IMAGE_ENCODER_VARIANT = "dinov3-vits16-pretrain-lvd1689m"
-# IMAGE_ENCODER_PRETRAINED = True
-# IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vits16-pretrain-lvd1689m"
-# IMAGE_EMBEDDING_DIM = None
-# IMAGE_ENCODER_FREEZE = True
-# IMAGE_DROPOUT_RATE = 0.1
+IMAGE_ENCODER = "dinov3"
+IMAGE_ENCODER_VARIANT = "dinov3-vith16plus-pretrain-lvd1689m"
+IMAGE_ENCODER_PRETRAINED = True
+IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+IMAGE_EMBEDDING_DIM = None
+IMAGE_ENCODER_FREEZE = True
+IMAGE_DROPOUT_RATE = 0
 
 # Text parameters
 TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
@@ -63,7 +63,7 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
         "max_length": 512
     },
     "clip": {
-        "tokenizer_name": "openai/clip-vit-base-patch32",
+        "tokenizer_name": "openai/clip-vit-large-patch14-336",
         "max_length": 77
     },
     "fasttext": {
@@ -72,14 +72,6 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
         "lowercase": True
     }
 }
-
-TEXT_ENCODER = "fasttext"  # Options: "bert", "clip", "fasttext"
-TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
-TEXT_EMBEDDING_DIM = 300
-TEXT_ENCODER_VARIANT = "cc.en.300"
-TEXT_ENCODER_FREEZE = True
-TEXT_DROPOUT_RATE = 0.1
-FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/ProjectDeepLearning/cc.en.300.bin"
 
 # Quick-switch presets (uncomment a block and comment the active settings)
 # BERT
@@ -90,12 +82,12 @@ FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/Project
 # TEXT_ENCODER_FREEZE = True
 # TEXT_DROPOUT_RATE = 0.1
 # CLIP
-# TEXT_ENCODER = "clip"
-# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["clip"]
-# TEXT_EMBEDDING_DIM = None
-# TEXT_ENCODER_VARIANT = "clip-vit-base-patch32"
-# TEXT_ENCODER_FREEZE = True
-# TEXT_DROPOUT_RATE = 0.1
+TEXT_ENCODER = "clip"
+TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["clip"]
+TEXT_EMBEDDING_DIM = None
+TEXT_ENCODER_VARIANT = "clip-vit-large-patch14-336"
+TEXT_ENCODER_FREEZE = True
+TEXT_DROPOUT_RATE = 0
 # FastText
 # TEXT_ENCODER = "fasttext"
 # TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["fasttext"]
@@ -107,10 +99,10 @@ FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/Project
 
 # Training parameters
 BATCH_SIZE = 32
-NUM_WORKERS = 4
+NUM_WORKERS = 8
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
-NUM_EPOCHS = 10
+NUM_EPOCHS = 35
 EARLY_STOPPING_PATIENCE = 10
 
 # Model parameters

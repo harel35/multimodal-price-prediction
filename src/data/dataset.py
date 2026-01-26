@@ -68,8 +68,8 @@ class MultimodalPriceDataset(Dataset):
             image_path = self.images_dir / image_filename
             if not image_path.exists():
                 continue
-            if not self._can_open_image(image_path):
-                continue
+            # if not self._can_open_image(image_path):
+            #     continue
             valid_indices.append(idx)
         
         return self.df.loc[valid_indices]
@@ -91,13 +91,15 @@ class MultimodalPriceDataset(Dataset):
             return True
         except Exception:
             return False
-
     def _load_image(self, image_path: Path) -> Image.Image:
         """Load and convert image to RGB."""
         try:
-            return Image.open(image_path).convert('RGB')
+            image = Image.open(image_path).convert('RGB')
+            return image
         except Exception as e:
-            raise RuntimeError(f"Error loading image {image_path}: {e}") from e
+            print(f"Error loading image {image_path}: {e}")
+            # Return a blank image as fallback
+            return Image.new('RGB', (224, 224), color=(128, 128, 128))
     
     def _parse_catalog_content(self, catalog_content: str) -> Dict[str, str]:
         """
