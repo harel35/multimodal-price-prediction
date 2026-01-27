@@ -49,11 +49,11 @@ IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 # IMAGE_DROPOUT_RATE = 0.1
 # DINOv3
 IMAGE_ENCODER = "dinov3"
-IMAGE_ENCODER_VARIANT = "dinov3-vith16plus-pretrain-lvd1689m"
+IMAGE_ENCODER_VARIANT = "dinov3-vits16-pretrain-lvd1689m"
 IMAGE_ENCODER_PRETRAINED = True
-IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vith16plus-pretrain-lvd1689m"
+IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vits16-pretrain-lvd1689m"
 IMAGE_EMBEDDING_DIM = None
-IMAGE_ENCODER_FREEZE = True
+IMAGE_ENCODER_FREEZE = False
 IMAGE_DROPOUT_RATE = 0
 
 # Text parameters
@@ -63,7 +63,7 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
         "max_length": 512
     },
     "clip": {
-        "tokenizer_name": "openai/clip-vit-large-patch14-336",
+        "tokenizer_name": "openai/clip-vit-base-patch32",
         "max_length": 77
     },
     "fasttext": {
@@ -85,8 +85,8 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
 TEXT_ENCODER = "clip"
 TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["clip"]
 TEXT_EMBEDDING_DIM = None
-TEXT_ENCODER_VARIANT = "clip-vit-large-patch14-336"
-TEXT_ENCODER_FREEZE = True
+TEXT_ENCODER_VARIANT = "clip-vit-base-patch32"
+TEXT_ENCODER_FREEZE = False
 TEXT_DROPOUT_RATE = 0
 # FastText
 # TEXT_ENCODER = "fasttext"
@@ -103,7 +103,6 @@ NUM_WORKERS = 8
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
 NUM_EPOCHS = 35
-EARLY_STOPPING_PATIENCE = 10
 
 # Model parameters
 DROPOUT_RATE = 0.2
