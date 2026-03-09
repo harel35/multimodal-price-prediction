@@ -62,35 +62,6 @@ def _resolve_device(device: Optional[torch.device] = None) -> torch.device:
     return torch.device("cpu")
 
 
-def _serialize_for_wandb(value: Any) -> Any:
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, dict):
-        return {key: _serialize_for_wandb(val) for key, val in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_serialize_for_wandb(val) for val in value]
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
-
-
-def _collect_wandb_config(
-    model_config: Optional[Dict[str, Any]] = None,
-    runtime_config: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    base_config = {
-        name: getattr(config, name)
-        for name in dir(config)
-        if name.isupper()
-    }
-    payload = _serialize_for_wandb(base_config)
-    if model_config:
-        payload["resolved_model"] = _serialize_for_wandb(model_config)
-    if runtime_config:
-        payload["runtime"] = _serialize_for_wandb(runtime_config)
-    return payload
-
-
 def _move_text_inputs(text_inputs, device: torch.device):
     if isinstance(text_inputs, dict):
         return {key: value.to(device) for key, value in text_inputs.items()}
@@ -103,7 +74,6 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
     encoder_name = getattr(config, "IMAGE_ENCODER", "resnet").lower()
     variant = getattr(config, "IMAGE_ENCODER_VARIANT", None)
     pretrained = getattr(config, "IMAGE_ENCODER_PRETRAINED", True)
-    pretrained_name = getattr(config, "IMAGE_ENCODER_PRETRAINED_NAME", None)
     output_dim = getattr(config, "IMAGE_EMBEDDING_DIM", None)
     freeze_backbone = getattr(config, "IMAGE_ENCODER_FREEZE", False)
     dropout_rate = getattr(config, "IMAGE_DROPOUT_RATE", getattr(config, "DROPOUT_RATE", 0.3))
@@ -113,7 +83,6 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_resnet_encoder(
             variant=variant,
             pretrained=pretrained,
-            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -123,7 +92,6 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_vit_encoder(
             variant=variant,
             pretrained=pretrained,
-            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -133,7 +101,6 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         encoder = create_dinov3_encoder(
             variant=variant,
             pretrained=pretrained,
-            pretrained_name=pretrained_name,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -183,7 +150,7 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
             dropout_rate=dropout_rate
         )
     elif encoder_name == "fasttext":
-        variant = getattr(config, "TEXT_ENCODER_VARIANT", "cc.en.300")
+        variant = getattr(config, "FASTTEXT_VARIANT", "cc.en.300")
         model_path = getattr(config, "FASTTEXT_MODEL_PATH", None)
         lowercase = bool(config.TEXT_ENCODER_CONFIG.get("lowercase", True))
         encoder = create_fasttext_encoder(
@@ -207,15 +174,48 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
 
 
 def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict[str, Any]]:
-    hidden_dims = getattr(config, "FUSION_HIDDEN_DIMS", (512, 256))
-    fusion_method = getattr(config, "FUSION_METHOD", "concat")
-    dropout_rate = getattr(config, "DROPOUT_RATE", 0.3)
-    activation = getattr(config, "FUSION_ACTIVATION", "relu")
-    use_batch_norm = getattr(config, "FUSION_USE_BATCH_NORM", True)
-    use_layer_norm = getattr(config, "FUSION_USE_LAYER_NORM", False)
-    use_residual = getattr(config, "FUSION_USE_RESIDUAL", True)
-    fusion_dim = getattr(config, "FUSION_DIM", None)
-    output_activation = getattr(config, "OUTPUT_ACTIVATION", None)
+    # determine network architecture and training tricks based on chosen type
+    mlp_type = getattr(config, "FUSION_MLP_TYPE", None)
+    if mlp_type is not None:
+        mlp_type = mlp_type.lower()
+        if mlp_type == "mlp1":
+            hidden_dims = (512, 256)
+            activation = "relu"
+            dropout_rate = 0.2
+            use_residual = False
+            use_batch_norm = True
+            use_layer_norm = False
+        elif mlp_type == "mlp2":
+            hidden_dims = (512, 512, 256)
+            activation = "relu"
+            dropout_rate = 0.2
+            use_residual = False
+            use_batch_norm = True
+            use_layer_norm = False
+        elif mlp_type == "mlp3":
+            hidden_dims = (512, 512, 256)
+            activation = "gelu"
+            dropout_rate = 0.3
+            use_residual = True
+            use_batch_norm = False
+            use_layer_norm = True
+        else:
+            raise ValueError(f"Unknown FUSION_MLP_TYPE '{mlp_type}'")
+        # allow overriding certain parameters even when type is set
+        fusion_method = getattr(config, "FUSION_METHOD", "concat")
+        fusion_dim = getattr(config, "FUSION_DIM", None)
+        output_activation = getattr(config, "OUTPUT_ACTIVATION", None)
+    else:
+        # fall back to legacy configurable settings
+        hidden_dims = getattr(config, "FUSION_HIDDEN_DIMS", (512, 256))
+        fusion_method = getattr(config, "FUSION_METHOD", "concat")
+        dropout_rate = getattr(config, "DROPOUT_RATE", 0.3)
+        activation = getattr(config, "FUSION_ACTIVATION", "relu")
+        use_batch_norm = getattr(config, "FUSION_USE_BATCH_NORM", True)
+        use_layer_norm = getattr(config, "FUSION_USE_LAYER_NORM", False)
+        use_residual = getattr(config, "FUSION_USE_RESIDUAL", True)
+        fusion_dim = getattr(config, "FUSION_DIM", None)
+        output_activation = getattr(config, "OUTPUT_ACTIVATION", None)
 
     fusion = create_mlp_fusion(
         image_dim=image_dim,
@@ -240,6 +240,9 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
         "fusion_use_layer_norm": use_layer_norm,
         "fusion_use_residual": use_residual
     }
+    mlp_type = getattr(config, "FUSION_MLP_TYPE", None)
+    if mlp_type is not None:
+        fusion_config["fusion_mlp_type"] = mlp_type
     return fusion, fusion_config
 
 
@@ -332,7 +335,8 @@ def train(
     model = model.to(device)
 
     if criterion is None:
-        criterion = smape_loss
+        smape_eps = getattr(config, "SMAPE_EPS", 1e-8)
+        criterion = lambda preds, targets: smape_loss(preds, targets, eps=smape_eps)
 
     if optimizer is None:
         optimizer = optim.AdamW(
@@ -342,22 +346,38 @@ def train(
         )
 
     epochs = epochs or getattr(config, "NUM_EPOCHS", 10)
+    scheduler = None
+    scheduler_name = getattr(config, "LR_SCHEDULER", None)
+    if scheduler_name == "plateau":
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=getattr(config, "LR_FACTOR", 0.5),
+            patience=getattr(config, "LR_PATIENCE", 3),
+            min_lr=getattr(config, "MIN_LR", 1e-6)
+        )
+    elif scheduler_name == "cosine":
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     trainable_params = count_parameters(model)
     print(f"\nTrainable parameters: {trainable_params:,}")
 
     if wandb.run is None:
-        runtime_config = {
-            "epochs": epochs,
-            "trainable_params": trainable_params,
-            "optimizer": optimizer.__class__.__name__,
-            "device": str(device)
-        }
         wandb_kwargs = {
             "project": getattr(config, "WANDB_PROJECT_NAME", "deep-learning-project"),
-            "config": _collect_wandb_config(
-                model_config=model_config,
-                runtime_config=runtime_config
-            )
+            "config": {
+                "batch_size": config.BATCH_SIZE,
+                "learning_rate": getattr(config, "LEARNING_RATE", 1e-4),
+                "weight_decay": getattr(config, "WEIGHT_DECAY", 1e-4),
+                "dropout_rate": getattr(config, "DROPOUT_RATE", 0.3),
+                "epochs": epochs,
+                "trainable_params": trainable_params,
+                "smape_eps": getattr(config, "SMAPE_EPS", 1e-8),
+                "lr_scheduler": getattr(config, "LR_SCHEDULER", None),
+                "lr_factor": getattr(config, "LR_FACTOR", 0.5),
+                "lr_patience": getattr(config, "LR_PATIENCE", 3),
+                "grad_clip_norm": getattr(config, "GRAD_CLIP_NORM", None),
+                **model_config
+            }
         }
         wandb_entity = getattr(config, "WANDB_ENTITY", None)
         if wandb_entity:
@@ -372,6 +392,10 @@ def train(
 
     checkpoint_path = Path(getattr(config, "CHECKPOINT_PATH", config.CHECKPOINT_DIR / "best_model.pt"))
     history = {"train": [], "val": []}
+    best_val_loss = float("inf")
+    epochs_since_improve = 0
+    early_stopping_patience = getattr(config, "EARLY_STOPPING_PATIENCE", 10)
+    grad_clip_norm = getattr(config, "GRAD_CLIP_NORM", None)
 
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}/{epochs}")
@@ -390,6 +414,8 @@ def train(
             preds = model(images, text_inputs).squeeze(-1)
             loss = criterion(preds, prices)
             loss.backward()
+            if grad_clip_norm is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
             optimizer.step()
 
             batch_size = prices.size(0)
@@ -428,14 +454,29 @@ def train(
         wandb.log(log_payload, step=epoch + 1)
 
         if val_metrics is not None:
-            save_checkpoint(
-                model=model,
-                optimizer=optimizer,
-                epoch=epoch + 1,
-                loss=val_metrics["loss"],
-                path=str(checkpoint_path),
-                metrics=val_metrics
-            )
+            if val_metrics["loss"] < best_val_loss - 1e-6:
+                best_val_loss = val_metrics["loss"]
+                epochs_since_improve = 0
+                save_checkpoint(
+                    model=model,
+                    optimizer=optimizer,
+                    epoch=epoch + 1,
+                    loss=val_metrics["loss"],
+                    path=str(checkpoint_path),
+                    metrics=val_metrics
+                )
+            else:
+                epochs_since_improve += 1
+                if epochs_since_improve >= early_stopping_patience:
+                    print(f"Early stopping triggered at epoch {epoch + 1}.")
+                    break
+
+        if scheduler is not None:
+            if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                step_loss = val_metrics["loss"] if val_metrics is not None else train_metrics["loss"]
+                scheduler.step(step_loss)
+            else:
+                scheduler.step()
 
     return model, history
 
@@ -494,7 +535,8 @@ def evaluate(
     model = model.to(device)
 
     if criterion is None:
-        criterion = smape_loss
+        smape_eps = getattr(config, "SMAPE_EPS", 1e-8)
+        criterion = lambda preds, targets: smape_loss(preds, targets, eps=smape_eps)
 
     model.eval()
     loss_sum = 0.0
@@ -528,10 +570,9 @@ def evaluate(
         if wandb.run is None:
             wandb_kwargs = {
                 "project": getattr(config, "WANDB_PROJECT_NAME", "multimodal-price-prediction"),
-                "config": _collect_wandb_config(runtime_config={
-                    "split": split_name,
-                    "device": str(device)
-                })
+                "config": {
+                    "split": split_name
+                }
             }
             wandb_entity = getattr(config, "WANDB_ENTITY", None)
             if wandb_entity:

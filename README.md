@@ -122,11 +122,12 @@ All configuration lives in `ProjectDeepLearning/src/config.py`. Use the tables b
 
 | Parameter | Description |
 | --- | --- |
-| `DROPOUT_RATE` | Default dropout for fusion layers. |
+| `DROPOUT_RATE` | Default dropout for fusion layers. May be overridden by variant. |
 | `FUSION_METHOD` | Fusion strategy (`concat`, `attention`, `addition`). |
-| `FUSION_HIDDEN_DIMS` | Hidden layer sizes for the fusion MLP. |
-| `FUSION_ACTIVATION` | Activation function used in fusion. |
-| `FUSION_USE_BATCH_NORM` | Enable batch norm in fusion layers. |
+| `FUSION_MLP_TYPE` | Pre‑defined MLP variant (`mlp1`, `mlp2`, `mlp3`) that sets hidden dims, activation, dropout, and residual behaviour. Overrides `FUSION_HIDDEN_DIMS`. |
+| `FUSION_HIDDEN_DIMS` | Hidden layer sizes for the fusion MLP (ignored if `FUSION_MLP_TYPE` is set). |
+| `FUSION_ACTIVATION` | Activation function used in fusion. Defaults depend on variant. |
+| `FUSION_USE_BATCH_NORM` | Enable batch norm in fusion layers. Variant-specific defaults apply. |
 | `FUSION_DIM` | Shared dim for `addition`/`attention` when encoder dims differ. |
 | `OUTPUT_ACTIVATION` | Optional activation on the final output. |
 

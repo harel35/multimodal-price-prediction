@@ -27,7 +27,7 @@ class MLPFusion(nn.Module):
         activation (str): Activation name: 'relu', 'gelu', or 'tanh'.
         use_batch_norm (bool): Whether to add BatchNorm between layers.
         use_layer_norm (bool): Whether to add LayerNorm between layers.
-        use_residual (bool): Whether to add residual connections when dims match.
+        use_residual (bool): Whether to add residual connections (uses projection if dims differ).
         fusion_dim (Optional[int]): Shared dimension for addition/attention if dims differ.
         output_activation (Optional[str]): Output activation: 'relu', 'softplus', 'sigmoid', or None.
     """
@@ -154,11 +154,14 @@ class MLPFusion(nn.Module):
                 use_residual: bool
             ):
                 super().__init__()
-                self.use_residual = use_residual and (in_dim == out_dim)
+                self.use_residual = use_residual
                 self.linear = nn.Linear(in_dim, out_dim)
                 self.norm = norm_factory(out_dim)
                 self.activation = activation_factory()
                 self.dropout = nn.Dropout(p=dropout_rate)
+                self.residual_proj = None
+                if self.use_residual and in_dim != out_dim:
+                    self.residual_proj = nn.Linear(in_dim, out_dim)
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 out = self.linear(x)
@@ -166,7 +169,8 @@ class MLPFusion(nn.Module):
                 out = self.activation(out)
                 out = self.dropout(out)
                 if self.use_residual:
-                    out = out + x
+                    residual = x if self.residual_proj is None else self.residual_proj(x)
+                    out = out + residual
                 return out
 
         layers: List[nn.Module] = []

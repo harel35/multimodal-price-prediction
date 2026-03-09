@@ -15,48 +15,33 @@ CSV_PATH = DATA_ROOT / "data.csv"
 MODELS_DIR = PROJECT_ROOT / "models"
 CHECKPOINT_DIR = MODELS_DIR / "checkpoints"
 
-# Create directories if they don't exist
+# Create directoriesd if they don't exist
 MODELS_DIR.mkdir(exist_ok=True)
 CHECKPOINT_DIR.mkdir(exist_ok=True)
 
 # Data parameters
 TRAIN_SPLIT = 0.8
+
 VAL_SPLIT = 0.1
 TEST_SPLIT = 0.1
 RANDOM_SEED = 42
 
 # Image parameters
-IMAGE_SIZE = (256, 256)  # (224,224 for Resnet/ViT, 256,256 for DINOv3)
+IMAGE_SIZE = (224, 224)  # Standard size for pretrained models
 IMAGE_MEAN = [0.485, 0.456, 0.406]  # ImageNet mean
 IMAGE_STD = [0.229, 0.224, 0.225]   # ImageNet std
 
 # Image encoder parameters
-# ResNet
-# IMAGE_ENCODER = "resnet"  # Options: "resnet", "vit", "dinov3"
-# IMAGE_ENCODER_VARIANT = "resnet-152"
-# IMAGE_ENCODER_PRETRAINED = True
-# IMAGE_ENCODER_PRETRAINED_NAME = "microsoft/resnet-152"
-# IMAGE_EMBEDDING_DIM = None  # Set to override encoder output dim
-# IMAGE_ENCODER_FREEZE = True
-# IMAGE_DROPOUT_RATE = 0.1
-# ViT
-# IMAGE_ENCODER = "vit"
-# IMAGE_ENCODER_VARIANT = "vit-base-patch16-224"
-# IMAGE_ENCODER_PRETRAINED = True
-# IMAGE_ENCODER_PRETRAINED_NAME = "google/vit-base-patch16-224"
-# IMAGE_EMBEDDING_DIM = None
-# IMAGE_ENCODER_FREEZE = True
-# IMAGE_DROPOUT_RATE = 0.1
-# DINOv3
-IMAGE_ENCODER = "dinov3"
-IMAGE_ENCODER_VARIANT = "dinov3-vits16-pretrain-lvd1689m"
+IMAGE_ENCODER = "dinov3"  # Options: "resnet", "vit", "dinov3"
+IMAGE_ENCODER_VARIANT = None  # Uses encoder default if None
 IMAGE_ENCODER_PRETRAINED = True
-IMAGE_ENCODER_PRETRAINED_NAME = "facebook/dinov3-vits16-pretrain-lvd1689m"
-IMAGE_EMBEDDING_DIM = None
+IMAGE_EMBEDDING_DIM = 768  # Set to override encoder output dim
 IMAGE_ENCODER_FREEZE = False
-IMAGE_DROPOUT_RATE = 0
+IMAGE_DROPOUT_RATE = 0.1
 
 # Text parameters
+
+TEXT_ENCODER = "clip"  # Options: "bert", "clip", "fasttext"
 TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
     "bert": {
         "tokenizer_name": "bert-base-uncased",
@@ -72,49 +57,56 @@ TEXT_ENCODER_CONFIGS = { # tokenizer and max length for each encoder
         "lowercase": True
     }
 }
-
-# Quick-switch presets (uncomment a block and comment the active settings)
-# BERT
-# TEXT_ENCODER = "bert"
-# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["bert"]
-# TEXT_EMBEDDING_DIM = None
-# TEXT_ENCODER_VARIANT = "bert-base-uncased"
-# TEXT_ENCODER_FREEZE = True
-# TEXT_DROPOUT_RATE = 0.1
-# CLIP
-TEXT_ENCODER = "clip"
-TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["clip"]
-TEXT_EMBEDDING_DIM = None
-TEXT_ENCODER_VARIANT = "clip-vit-base-patch32"
+TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS[TEXT_ENCODER]
+TEXT_EMBEDDING_DIM = 768  # Set to override encoder output dim  
+TEXT_ENCODER_VARIANT = "openai/clip-vit-base-patch32"  # Uses encoder default if None
+TEXT_ENCODER_PRETRAINED = True
 TEXT_ENCODER_FREEZE = False
-TEXT_DROPOUT_RATE = 0
-# FastText
-# TEXT_ENCODER = "fasttext"
-# TEXT_ENCODER_CONFIG = TEXT_ENCODER_CONFIGS["fasttext"]
-# TEXT_EMBEDDING_DIM = 300
-# TEXT_ENCODER_VARIANT = "cc.en.300"
-# FASTTEXT_MODEL_PATH = "/home/projects/sipl-prj10268/DeepLearning/Project/ProjectDeepLearning/cc.en.300.bin"
-# TEXT_ENCODER_FREEZE = True
-# TEXT_DROPOUT_RATE = 0.1
+TEXT_DROPOUT_RATE = 0.1
+
+# FastText parameters
+FASTTEXT_VARIANT = "cc.en.300"
+FASTTEXT_MODEL_PATH = PROJECT_ROOT / "cc.en.300.bin"
 
 # Training parameters
 BATCH_SIZE = 32
-NUM_WORKERS = 8
+NUM_WORKERS = 4
 LEARNING_RATE = 1e-4
-WEIGHT_DECAY = 1e-4
-NUM_EPOCHS = 35
+WEIGHT_DECAY = 2e-4
+NUM_EPOCHS = 30
+EARLY_STOPPING_PATIENCE = 10
 
 # Model parameters
+# When experimenting with fusion architectures we provide three predefined MLP
+# variants. You can choose one using FUSION_MLP_TYPE.  The settings for each
+# variant are hard-coded in _resolve_fusion_head; if you want full control you
+# can still override individual parameters like FUSION_HIDDEN_DIMS,
+# FUSION_ACTIVATION, etc., but the variant will take precedence.
+#   * mlp1: baseline network [512,256], ReLU, dropout=0.3, no residuals, batch norm.
+#   * mlp2: identical to mlp1; only change is three hidden layers [512,512,256].
+#   * mlp3: same width as mlp2 [512,512,256], GELU, residuals, layer norm,
+#           and higher dropout.
+FUSION_MLP_TYPE = "mlp3"  # Options: "mlp1", "mlp2", "mlp3"; set to None for
+                           # backward-compatible manual configuration.
+
 DROPOUT_RATE = 0.2
-FUSION_METHOD = "concat"  # Options: "concat", "attention", "addition"
-FUSION_HIDDEN_DIMS = (2048, 1024, 512, 256)
+FUSION_METHOD = "concat"  # Options: "concat", "attention", "addition", "gated"
+FUSION_HIDDEN_DIMS = (512, 512, 256)
 FUSION_ACTIVATION = "relu"
 FUSION_USE_BATCH_NORM = True
+FUSION_USE_LAYER_NORM = False
+FUSION_USE_RESIDUAL = False
 FUSION_DIM = None
-OUTPUT_ACTIVATION = None
+OUTPUT_ACTIVATION = "softplus"
+SMAPE_EPS = 1e-4
+GRAD_CLIP_NORM = 1.0
+LR_SCHEDULER = "plateau"  # Options: "plateau", "cosine", None
+LR_FACTOR = 0.5
+LR_PATIENCE = 3
+MIN_LR = 1e-6
 
 # Checkpoint parameters
-CHECKPOINT_PATH = CHECKPOINT_DIR / "best_model.pt"
+CHECKPOINT_PATH = CHECKPOINT_DIR / "dino_fasttext_unfreeze_concat_mlp1.pt"
 
 # Weights & Biases
 WANDB_PROJECT_NAME = "deep-learning-project"
@@ -122,16 +114,5 @@ WANDB_ENTITY = "deep-learning-project-technion"
 WANDB_RUN_NAME = None
 WANDB_MODE = None
 
-# Qwen evaluation (image-text-to-text)
-QWEN_MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
-QWEN_MAX_NEW_TOKENS = 40
-QWEN_TEMPERATURE = 0.0
-QWEN_TOP_P = 1.0
-QWEN_PROMPT_TEMPLATE = (
-    "Predict the product price as a single number using the image and description. "
-    "Description: {text} "
-    "Only output the number."
-)
-
-# Device
+# Device configuration
 DEVICE = "cuda"  # cuda or cpu
