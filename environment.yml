@@ -1,25 +1,25 @@
 name: multimodal-price-prediction
 channels:
-  - pytorch
   - conda-forge
+  - pytorch
   - defaults
 dependencies:
-  - python==3.10
-  - pip==24.2
-  - numpy==1.26.4
-  - pandas==2.2.2
-  - scikit-learn==1.4.2
-  - pillow==10.4.0
-  - matplotlib==3.9.0
-  - tqdm==4.66.4
-  - jupyterlab==4.2.5
-  - ipykernel==6.29.5
+  - python=3.10
+  - pip=24.2
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - scikit-learn=1.4.2
+  - pillow=10.4.0
+  - matplotlib>=3.8,<3.10
+  - tqdm=4.66.4
+  - jupyterlab=4.2.5
+  - ipykernel=6.29.5
+  - fasttext=0.9.2
   - pip:
       - torch==2.9.0
       - torchvision==0.24.0
       - transformers==4.56.0
       - safetensors==0.4.3
       - accelerate==0.34.2
-      - fasttext==0.9.2
       - wandb==0.24.0
       - qwen-vl-utils==0.0.14
