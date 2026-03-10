@@ -1,5 +1,7 @@
-"""
-Evaluate Qwen/Qwen2.5-VL-7B-Instruct on the dataset and log metrics to W&B.
+"""Qwen baseline evaluation script for multimodal price prediction.
+
+The script evaluates a vision-language model (default: Qwen2.5-VL-7B-Instruct)
+on the same train/val/test splits used by the learned multimodal model.
 """
 import argparse
 import csv
@@ -26,6 +28,7 @@ _PRICE_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 def _resolve_device(device: Optional[str]) -> torch.device:
+    """Resolve runtime device from explicit argument or project config."""
     if device:
         return torch.device(device)
     if torch.cuda.is_available() and getattr(config, "DEVICE", "cuda") == "cuda":
@@ -34,6 +37,7 @@ def _resolve_device(device: Optional[str]) -> torch.device:
 
 
 def _extract_price(text: str) -> Optional[float]:
+    """Extract the first numeric price-like token from model response text."""
     cleaned = text.replace(",", "")
     match = _PRICE_PATTERN.search(cleaned)
     if not match:
@@ -45,10 +49,12 @@ def _extract_price(text: str) -> Optional[float]:
 
 
 def _build_prompt(template: str, raw_text: str) -> str:
+    """Inject raw catalog text into the prompt template."""
     return template.replace("{text}", raw_text)
 
 
 def _prepare_inputs(processor, messages):
+    """Prepare chat template + vision tensors for Qwen generation."""
     try:
         from qwen_vl_utils import process_vision_info
     except Exception:
@@ -78,11 +84,12 @@ def _prepare_inputs(processor, messages):
 
 
 def _load_model(model_name: str, device: torch.device):
+    """Load processor/model pair with dtype suited to available hardware."""
     dtype = torch.float16 if device.type == "cuda" else torch.float32
     processor = AutoProcessor.from_pretrained(model_name, use_fast=False)
     model = AutoModelForImageTextToText.from_pretrained(
         model_name,
-        dtype=dtype,
+        torch_dtype=dtype,
     )
     model.to(device)
     model.eval()
@@ -90,6 +97,7 @@ def _load_model(model_name: str, device: torch.device):
 
 
 def _init_wandb(config_payload: Dict, run_name: Optional[str]):
+    """Initialize W&B run for Qwen evaluation."""
     wandb_kwargs = {
         "project": getattr(config, "WANDB_PROJECT_NAME", "deep-learning-project"),
         "config": config_payload,
@@ -106,6 +114,7 @@ def _init_wandb(config_payload: Dict, run_name: Optional[str]):
 
 
 def _open_predictions_writer(save_path: Optional[str]):
+    """Open CSV writer for optional per-sample predictions dump."""
     if not save_path:
         return None, None
     path = Path(save_path)
@@ -143,9 +152,11 @@ def evaluate_qwen(
     show_sample: bool = False,
     save_predictions_path: Optional[str] = None,
 ):
+    """Run Qwen evaluation and return split metrics."""
     set_seed(seed)
     torch_device = _resolve_device(device)
 
+    # Keep transform=None so Qwen processor receives PIL images.
     dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
@@ -326,6 +337,7 @@ def evaluate_qwen(
 
 
 def main():
+    """CLI entry point for Qwen baseline evaluation."""
     parser = argparse.ArgumentParser(
         description="Evaluate Qwen/Qwen2.5-VL-7B-Instruct on the dataset."
     )

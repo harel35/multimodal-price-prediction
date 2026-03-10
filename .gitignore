@@ -1,14 +1,42 @@
-*.pyc
-*.pt
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.so
 
-# Dataset images
-*.jpg
+# Virtual environments
+.venv/
+venv/
+env/
 
-# WandB files
+# Notebook cache
+.ipynb_checkpoints/
+
+# IDE/editor settings
+.idea/
+.vscode/
+
+# Experiment artifacts
 wandb/
+outputs/*
+!outputs/README.md
+models/checkpoints/*
+!models/checkpoints/README.md
+*.pt
+*.pth
 
-# FastText model files
+# Dataset assets
+data/images/
+*.jpg
+*.jpeg
+*.png
+
+# FastText assets
+cc.en.300.bin
+cc.en.300.bin.gz
+*.ftz
 *.bin
 *.bin.gz
 
-outputs/
+# Logs and OS files
+*.log
+.DS_Store

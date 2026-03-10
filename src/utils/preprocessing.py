@@ -1,16 +1,15 @@
-"""
-Data preprocessing utilities for text and image data.
-"""
+"""Preprocessing helpers for text normalization and price transforms."""
+
 import re
+from typing import List
+
 import torch
-from typing import List, Optional
 from transformers import AutoTokenizer
 
 
 class TextPreprocessor:
     """
-    Text preprocessor for catalog content.
-    Uses a pretrained tokenizer (e.g., BERT) for text encoding.
+    Text preprocessor for legacy workflows that need explicit tokenization.
     """
     
     def __init__(
@@ -20,10 +19,10 @@ class TextPreprocessor:
     ):
         """
         Args:
-            model_name: Hugging Face model name for tokenizer
+            model_name: Hugging Face model name for tokenizer.
             max_length: Maximum sequence length
         """
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         self.max_length = max_length
     
     def clean_text(self, text: str) -> str:
@@ -36,15 +35,16 @@ class TextPreprocessor:
         Returns:
             Cleaned text
         """
-        # Remove extra whitespace
+        text = "" if text is None else str(text)
+
+        # Remove extra whitespace.
         text = re.sub(r'\s+', ' ', text)
-        
-        # Remove special characters (keep alphanumeric, spaces, and basic punctuation)
+
+        # Keep alphanumeric content and basic punctuation.
         text = re.sub(r'[^a-zA-Z0-9\s\.,!?-]', '', text)
-        
-        # Strip leading/trailing whitespace
+
         text = text.strip()
-        
+
         return text
     
     def encode_text(
@@ -116,7 +116,7 @@ class TextPreprocessor:
 
 class PriceTransformer:
     """
-    Transformer for price values to handle scale and distribution.
+    Optional transform for price targets (legacy utility).
     """
     
     def __init__(self, method: str = 'log1p'):
@@ -135,12 +135,13 @@ class PriceTransformer:
         Args:
             prices: Tensor of prices
         """
+        positive_prices = prices.clamp_min(0.0)
         if self.method == 'log1p':
-            transformed = torch.log1p(prices)
+            transformed = torch.log1p(positive_prices)
         elif self.method == 'log':
-            transformed = torch.log(prices + 1e-8)
+            transformed = torch.log(positive_prices + 1e-8)
         elif self.method == 'sqrt':
-            transformed = torch.sqrt(prices)
+            transformed = torch.sqrt(positive_prices)
         else:
             transformed = prices
         
@@ -157,12 +158,13 @@ class PriceTransformer:
         Returns:
             Transformed prices
         """
+        positive_prices = prices.clamp_min(0.0)
         if self.method == 'log1p':
-            transformed = torch.log1p(prices)
+            transformed = torch.log1p(positive_prices)
         elif self.method == 'log':
-            transformed = torch.log(prices + 1e-8)
+            transformed = torch.log(positive_prices + 1e-8)
         elif self.method == 'sqrt':
-            transformed = torch.sqrt(prices)
+            transformed = torch.sqrt(positive_prices)
         else:
             transformed = prices
         
@@ -214,10 +216,10 @@ def denormalize_image(
     Returns:
         Denormalized image tensor
     """
-    mean = torch.tensor(mean).view(-1, 1, 1)
-    std = torch.tensor(std).view(-1, 1, 1)
+    mean_tensor = torch.tensor(mean, device=image.device, dtype=image.dtype).view(-1, 1, 1)
+    std_tensor = torch.tensor(std, device=image.device, dtype=image.dtype).view(-1, 1, 1)
     
-    denormalized = image * std + mean
+    denormalized = image * std_tensor + mean_tensor
     denormalized = torch.clamp(denormalized, 0, 1)
     
     return denormalized

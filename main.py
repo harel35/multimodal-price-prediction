@@ -1,16 +1,24 @@
+"""Training and evaluation entry point for multimodal price prediction.
+
+This script wires together:
+- image encoder selection
+- text encoder selection
+- fusion head construction
+- train/validation/test loops
+- W&B experiment tracking
 """
-Training for the multimodal price prediction model.
-"""
+
 import sys
 import math
+import argparse
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
 from tqdm import tqdm
 import wandb
-import argparse
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent))
@@ -34,7 +42,7 @@ from src.utils.metrics import smape_loss
 
 class MultimodalPriceModel(nn.Module):
     """
-    Simple wrapper for image encoder + text encoder + fusion head.
+    Thin container that combines modality encoders with a fusion regressor.
     """
 
     def __init__(
@@ -55,6 +63,7 @@ class MultimodalPriceModel(nn.Module):
 
 
 def _resolve_device(device: Optional[torch.device] = None) -> torch.device:
+    """Resolve runtime device from explicit argument or project config."""
     if device is not None:
         return torch.device(device)
     if torch.cuda.is_available() and getattr(config, "DEVICE", "cuda") == "cuda":
@@ -63,6 +72,7 @@ def _resolve_device(device: Optional[torch.device] = None) -> torch.device:
 
 
 def _move_text_inputs(text_inputs, device: torch.device):
+    """Move tokenized text inputs to device while preserving input structure."""
     if isinstance(text_inputs, dict):
         return {key: value.to(device) for key, value in text_inputs.items()}
     if isinstance(text_inputs, torch.Tensor):
@@ -71,6 +81,7 @@ def _move_text_inputs(text_inputs, device: torch.device):
 
 
 def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
+    """Instantiate the configured image encoder and return its logging config."""
     encoder_name = getattr(config, "IMAGE_ENCODER", "resnet").lower()
     variant = getattr(config, "IMAGE_ENCODER_VARIANT", None)
     pretrained = getattr(config, "IMAGE_ENCODER_PRETRAINED", True)
@@ -118,8 +129,10 @@ def _resolve_image_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
 
 
 def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
+    """Instantiate the configured text encoder and return its logging config."""
     encoder_name = getattr(config, "TEXT_ENCODER", "bert").lower()
     output_dim = getattr(config, "TEXT_EMBEDDING_DIM", None)
+    pretrained = getattr(config, "TEXT_ENCODER_PRETRAINED", True)
     freeze_backbone = getattr(config, "TEXT_ENCODER_FREEZE", False)
     dropout_rate = getattr(config, "TEXT_DROPOUT_RATE", getattr(config, "DROPOUT_RATE", 0.3))
 
@@ -131,7 +144,7 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         )
         encoder = create_bert_text_encoder(
             variant=variant,
-            pretrained=True,
+            pretrained=pretrained,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -144,7 +157,7 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         variant = getattr(config, "TEXT_ENCODER_VARIANT", tokenizer_name.split("/", 1)[-1])
         encoder = create_clip_text_encoder(
             variant=variant,
-            pretrained=True,
+            pretrained=pretrained,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
             dropout_rate=dropout_rate
@@ -155,7 +168,7 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
         lowercase = bool(config.TEXT_ENCODER_CONFIG.get("lowercase", True))
         encoder = create_fasttext_encoder(
             variant=variant,
-            pretrained=True,
+            pretrained=pretrained,
             model_path=model_path,
             output_dim=output_dim,
             freeze_backbone=freeze_backbone,
@@ -168,13 +181,15 @@ def _resolve_text_encoder() -> Tuple[nn.Module, Dict[str, Any]]:
     encoder_config = {
         "text_encoder": encoder_name,
         "text_encoder_variant": encoder.variant,
+        "text_encoder_pretrained": pretrained,
         "text_encoder_output_dim": output_dim
     }
     return encoder, encoder_config
 
 
 def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict[str, Any]]:
-    # determine network architecture and training tricks based on chosen type
+    """Build fusion head from config and return module plus logging metadata."""
+    # Determine network architecture and training behavior from the preset type.
     mlp_type = getattr(config, "FUSION_MLP_TYPE", None)
     if mlp_type is not None:
         mlp_type = mlp_type.lower()
@@ -201,12 +216,12 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
             use_layer_norm = True
         else:
             raise ValueError(f"Unknown FUSION_MLP_TYPE '{mlp_type}'")
-        # allow overriding certain parameters even when type is set
+        # Allow overriding certain parameters even when a preset is selected.
         fusion_method = getattr(config, "FUSION_METHOD", "concat")
         fusion_dim = getattr(config, "FUSION_DIM", None)
         output_activation = getattr(config, "OUTPUT_ACTIVATION", None)
     else:
-        # fall back to legacy configurable settings
+        # Fall back to fully manual fusion hyperparameters.
         hidden_dims = getattr(config, "FUSION_HIDDEN_DIMS", (512, 256))
         fusion_method = getattr(config, "FUSION_METHOD", "concat")
         dropout_rate = getattr(config, "DROPOUT_RATE", 0.3)
@@ -247,6 +262,7 @@ def _resolve_fusion_head(image_dim: int, text_dim: int) -> Tuple[nn.Module, Dict
 
 
 def _build_model() -> Tuple[nn.Module, Dict[str, Any]]:
+    """Create full multimodal model and aggregate config for experiment logging."""
     image_encoder, image_config = _resolve_image_encoder()
     text_encoder, text_config = _resolve_text_encoder()
     fusion_head, fusion_config = _resolve_fusion_head(
@@ -262,6 +278,7 @@ def _build_model() -> Tuple[nn.Module, Dict[str, Any]]:
 
 
 def _average_metrics(loss_sum: float, mae_sum: float, mse_sum: float, count: int) -> Dict[str, float]:
+    """Convert running metric sums to per-sample averages."""
     count = max(count, 1)
     loss = loss_sum / count
     mae = mae_sum / count
@@ -274,19 +291,17 @@ def _average_metrics(loss_sum: float, mae_sum: float, mse_sum: float, count: int
 def train(
     model=None,
     train_loader=None,
-    text_preprocessor=None,
     criterion=None,
     optimizer=None,
     device=None,
     epochs=None
 ):
     """
-    Train for number of epochs.
+    Train the multimodal model.
 
     Args:
         model: The neural network model
         train_loader: Training data loader
-        text_preprocessor: Text preprocessing utility
         criterion: Loss function
         optimizer: Optimizer
         device: Device to run on
@@ -295,6 +310,7 @@ def train(
     Returns:
         Tuple of (model, history)
     """
+
     print("=" * 80)
     print("Training Multimodal Price Prediction Model")
     print("=" * 80)
@@ -484,25 +500,24 @@ def train(
 def evaluate(
     model=None,
     data_loader=None,
-    text_preprocessor=None,
     criterion=None,
     device=None,
     split_name: str = "test",
     log_to_wandb: bool = True
 ):
     """
-    Evaluate the model.
+    Evaluate the model on a split.
 
     Args:
         model: The neural network model
         data_loader: data loader
-        text_preprocessor: Text preprocessing utility
         criterion: Loss function
         device: Device to run on
 
     Returns:
         Metrics dictionary
     """
+
     device = _resolve_device(device)
 
     if data_loader is None:
@@ -523,6 +538,13 @@ def evaluate(
             text_encoder_config=config.TEXT_ENCODER_CONFIG
         )
         data_loader = dataloaders["test"]
+    elif isinstance(data_loader, dict):
+        data_loader = data_loader.get(split_name, data_loader.get("test"))
+        if data_loader is None:
+            raise ValueError(
+                "data_loader dict must include either the requested split "
+                f"'{split_name}' or 'test'."
+            )
 
     if model is None:
         model, _ = _build_model()
@@ -595,9 +617,7 @@ def evaluate(
 
 
 def main():
-    '''
-    Main Function which parses arguments and calls relevant functions
-    '''
+    """Parse CLI arguments and trigger training/evaluation."""
     parser = argparse.ArgumentParser(
         description="Train or evaluate the multimodal price prediction model."
     )

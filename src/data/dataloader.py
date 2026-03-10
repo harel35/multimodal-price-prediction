@@ -1,10 +1,8 @@
-"""
-DataLoader utilities for creating train, validation, and test loaders.
-"""
-import pandas as pd
+"""DataLoader and tokenization utilities for multimodal training."""
+
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
-from pathlib import Path
-from typing import Tuple, Dict, Optional, Callable, Any, List
 import torch
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
@@ -30,15 +28,17 @@ _TEXT_ENCODER_DEFAULTS = {
     }
 }
 
-
-def get_transforms(mode: str = 'train', image_size: Tuple[int, int] = (224, 224),
-                   mean: list = [0.485, 0.456, 0.406],
-                   std: list = [0.229, 0.224, 0.225]) -> transforms.Compose:
+def get_transforms(
+    mode: str = "train",
+    image_size: Tuple[int, int] = (224, 224),
+    mean: Optional[List[float]] = None,
+    std: Optional[List[float]] = None,
+) -> transforms.Compose:
     """
     Get image transforms for different modes.
     
     Args:
-        mode: 'train', 'val', or 'test'
+        mode: ``train``, ``val``, or ``test``
         image_size: Target image size
         mean: Normalization mean
         std: Normalization std
@@ -46,8 +46,10 @@ def get_transforms(mode: str = 'train', image_size: Tuple[int, int] = (224, 224)
     Returns:
         Composed transforms
     """
-    if mode == 'train':
-        # Training augmentations
+    mean = mean or [0.485, 0.456, 0.406]
+    std = std or [0.229, 0.224, 0.225]
+
+    if mode == "train":
         return transforms.Compose([
             transforms.Resize((int(image_size[0] * 1.1), int(image_size[1] * 1.1))),
             transforms.RandomCrop(image_size),
@@ -57,13 +59,13 @@ def get_transforms(mode: str = 'train', image_size: Tuple[int, int] = (224, 224)
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)
         ])
-    else:
-        # Validation/test transforms (no augmentation)
-        return transforms.Compose([
-            transforms.Resize(image_size),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
-        ])
+
+    # Validation/test transforms intentionally avoid augmentation.
+    return transforms.Compose([
+        transforms.Resize(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)
+    ])
 
 
 def split_dataset_indices(
@@ -86,19 +88,19 @@ def split_dataset_indices(
     Returns:
         Tuple of (train_indices, val_indices, test_indices)
     """
-    assert abs(train_split + val_split + test_split - 1.0) < 1e-6, \
-        "Splits must sum to 1.0"
-    
+    if abs(train_split + val_split + test_split - 1.0) >= 1e-6:
+        raise ValueError("train_split + val_split + test_split must sum to 1.0.")
+
     indices = np.arange(dataset_size)
-    
-    # First split: separate test set
+
+    # First split: hold out the test set.
     train_val_indices, test_indices = train_test_split(
         indices,
         test_size=test_split,
         random_state=random_seed
     )
-    
-    # Second split: separate train and validation
+
+    # Second split: split remaining data into train/validation.
     val_size_adjusted = val_split / (train_split + val_split)
     train_indices, val_indices = train_test_split(
         train_val_indices,
@@ -115,6 +117,8 @@ def _resolve_text_encoder_config(
 ) -> Dict[str, Any]:
     """
     Resolve text encoder config with defaults for the chosen encoder.
+
+    User-provided values override defaults only when value is not ``None``.
     """
     encoder_key = (text_encoder or "").lower()
     if encoder_key not in _TEXT_ENCODER_DEFAULTS:
@@ -138,6 +142,12 @@ def _build_text_tokenizer(
 ) -> Callable[[List[str]], Any]:
     """
     Build a tokenizer callable for the selected text encoder.
+
+    Returns:
+        Callable that receives a list of raw strings and returns model-ready
+        text inputs:
+        - BERT/CLIP: dictionary of tensors
+        - FastText: list of token lists
     """
     encoder_key = (text_encoder or "").lower()
 
@@ -183,7 +193,7 @@ def build_collate_fn(
     text_encoder_config: Optional[Dict[str, Any]] = None
 ) -> Callable:
     """
-    Build a collate function that tokenizes text per text encoder.
+    Build a collate function that tokenizes text according to ``text_encoder``.
     """
     resolved_config = _resolve_text_encoder_config(text_encoder, text_encoder_config)
     tokenizer = _build_text_tokenizer(text_encoder, resolved_config)
@@ -212,8 +222,8 @@ def create_dataloaders(
     test_split: float = 0.1,
     random_seed: int = 42,
     image_size: Tuple[int, int] = (224, 224),
-    mean: list = [0.485, 0.456, 0.406],
-    std: list = [0.229, 0.224, 0.225],
+    mean: Optional[List[float]] = None,
+    std: Optional[List[float]] = None,
     text_encoder: str = "bert",
     text_encoder_config: Optional[Dict[str, Any]] = None,
     pin_memory: bool = True
@@ -240,15 +250,17 @@ def create_dataloaders(
     Returns:
         Dictionary with 'train', 'val', 'test' dataloaders
     """
-    # Create full dataset with training transforms first to get indices
+    mean = mean or [0.485, 0.456, 0.406]
+    std = std or [0.229, 0.224, 0.225]
+
+    # Build one dataset instance to compute valid sample set and split indices.
     full_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
-        transform=None,  # We'll apply transforms per split
-        mode='full'
+        transform=None,
+        mode="full"
     )
-    
-    # Split indices
+
     train_indices, val_indices, test_indices = split_dataset_indices(
         dataset_size=len(full_dataset),
         train_split=train_split,
@@ -257,93 +269,90 @@ def create_dataloaders(
         random_seed=random_seed
     )
     
-    print(f"Dataset splits - Train: {len(train_indices)}, "
-          f"Val: {len(val_indices)}, Test: {len(test_indices)}")
-    
-    # Create separate datasets with appropriate transforms
+    print(
+        f"Dataset splits - Train: {len(train_indices)}, "
+        f"Val: {len(val_indices)}, Test: {len(test_indices)}"
+    )
+
+    # Each split gets its own transform pipeline. Dataset filtering remains
+    # deterministic because all splits read the same CSV/images.
     train_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
-        transform=get_transforms('train', image_size, mean, std),
-        mode='train'
+        transform=get_transforms("train", image_size, mean, std),
+        mode="train"
     )
-    
+
     val_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
-        transform=get_transforms('val', image_size, mean, std),
-        mode='val'
+        transform=get_transforms("val", image_size, mean, std),
+        mode="val"
     )
-    
+
     test_dataset = MultimodalPriceDataset(
         csv_path=csv_path,
         images_dir=images_dir,
-        transform=get_transforms('test', image_size, mean, std),
-        mode='test'
+        transform=get_transforms("test", image_size, mean, std),
+        mode="test"
     )
-    
-    # Create subsets
+
     train_subset = Subset(train_dataset, train_indices)
     val_subset = Subset(val_dataset, val_indices)
     test_subset = Subset(test_dataset, test_indices)
 
-    # Build collate function with tokenizer
     text_collate_fn = build_collate_fn(
         text_encoder=text_encoder,
         text_encoder_config=text_encoder_config
     )
-    
-    # Create dataloaders
+
+    loader_kwargs = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "collate_fn": text_collate_fn,
+    }
+
     train_loader = DataLoader(
         train_subset,
-        batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        collate_fn=text_collate_fn,
-        drop_last=True  # Drop last incomplete batch for training
+        drop_last=True,  # Keep stable tensor shapes in training statistics.
+        **loader_kwargs,
     )
-    
+
     val_loader = DataLoader(
         val_subset,
-        batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        collate_fn=text_collate_fn,
-        drop_last=False
+        drop_last=False,
+        **loader_kwargs,
     )
-    
+
     test_loader = DataLoader(
         test_subset,
-        batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        collate_fn=text_collate_fn,
-        drop_last=False
+        drop_last=False,
+        **loader_kwargs,
     )
-    
-    # Print statistics
+
     print("\nDataset Statistics:")
     stats = full_dataset.get_statistics()
     for key, value in stats.items():
         print(f"  {key}: {value:.4f}" if isinstance(value, float) else f"  {key}: {value}")
-    
+
     return {
-        'train': train_loader,
-        'val': val_loader,
-        'test': test_loader
+        "train": train_loader,
+        "val": val_loader,
+        "test": test_loader,
     }
 
 
 def collate_fn(batch):
     """
-    Custom collate function for batching multimodal data (raw text).
-    
+    Legacy collate function that returns raw text without tokenization.
+
     Args:
         batch: List of tuples (image, text, price, metadata)
-    
+
     Returns:
         Batched data
     """

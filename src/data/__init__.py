@@ -1,6 +1,4 @@
-"""
-Data module for multimodal price prediction.
-"""
+"""Data loading package for multimodal price prediction."""
 
 from .dataset import MultimodalPriceDataset
 from .dataloader import (
@@ -11,9 +9,9 @@ from .dataloader import (
 )
 
 __all__ = [
-    'MultimodalPriceDataset',
-    'create_dataloaders',
-    'get_transforms',
-    'build_collate_fn',
-    'collate_fn'
+    "MultimodalPriceDataset",
+    "create_dataloaders",
+    "get_transforms",
+    "build_collate_fn",
+    "collate_fn",
 ]
