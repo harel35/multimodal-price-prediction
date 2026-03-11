@@ -162,33 +162,13 @@ FastText note:
 
 ## References
 
-1. Oriane Siméoni, Huy V. Vo, Maximilian Seitzer, Federico Baldassarre, Maxime Oquab, Cijo Jose, Vasil Khalidov, Marc Szafraniec, Seungeun Yi, Michaël Ramamonjisoa, Francisco Massa, Daniel Haziza, Luca Wehrstedt, Jianyuan Wang, Timothée Darcet, Théo Moutakanni, Leonel Sentana, Claire Roberts, Andrea Vedaldi, Jamie Tolan, John Brandt, Camille Couprie, Julien Mairal, Hervé Jégou, Patrick Labatut, and Piotr Bojanowski. *DINOv3*. arXiv:2508.10104, 2025.  
-   Paper: https://arxiv.org/abs/2508.10104  
-   Repo: https://github.com/facebookresearch/dinov3
-
-2. Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever. *Learning Transferable Visual Models From Natural Language Supervision*. ICML, 2021.  
-   Paper: https://arxiv.org/abs/2103.00020  
-   Repo: https://github.com/openai/CLIP
-
-3. Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. *Deep Residual Learning for Image Recognition*. CVPR, 2016.  
-   Paper: https://arxiv.org/abs/1512.03385  
-   Repo: https://github.com/pytorch/vision
-
-4. Piotr Bojanowski, Edouard Grave, Armand Joulin, and Tomas Mikolov. *Enriching Word Vectors with Subword Information*. TACL, 2017.  
-   Paper: https://arxiv.org/abs/1607.04606  
-   Repo: https://github.com/facebookresearch/fastText
-
-5. An Yang et al. *Qwen2.5 Technical Report*. arXiv:2412.15115, 2024.  
-   Paper: https://arxiv.org/abs/2412.15115  
-   Repo: https://github.com/QwenLM/Qwen2.5-VL
-
-6. Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding*. NAACL-HLT, 2019.  
-   Paper: https://arxiv.org/abs/1810.04805  
-   Repo: https://github.com/google-research/bert
-
-7. Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. *An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale*. ICLR, 2021.  
-   Paper: https://arxiv.org/abs/2010.11929  
-   Repo: https://github.com/google-research/vision_transformer
+1. Siméoni, O., Vo, H. V., Seitzer, M., Baldassarre, F., Oquab, M., Jose, C., Khalidov, V., Szafraniec, M., Yi, S., Ramamonjisoa, M., Massa, F., Haziza, D., Wehrstedt, L., Wang, J., Darcet, T., Moutakanni, T., Sentana, L., Roberts, C., Vedaldi, A., Tolan, J., Brandt, J., Couprie, C., Mairal, J., Jégou, H., Labatut, P., & Bojanowski, P. (2025). [DINOv3](https://arxiv.org/abs/2508.10104). *arXiv preprint arXiv:2508.10104*.
+2. Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J., Krueger, G., & Sutskever, I. (2021). [Learning Transferable Visual Models From Natural Language Supervision](https://arxiv.org/abs/2103.00020). *Proceedings of ICML*.
+3. He, K., Zhang, X., Ren, S., & Sun, J. (2016). [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385). *Proceedings of CVPR*.
+4. Bojanowski, P., Grave, E., Joulin, A., & Mikolov, T. (2017). [Enriching Word Vectors with Subword Information](https://arxiv.org/abs/1607.04606). *Transactions of the Association for Computational Linguistics*.
+5. Yang, A., et al. (2024). [Qwen2.5 Technical Report](https://arxiv.org/abs/2412.15115). *arXiv preprint arXiv:2412.15115*.
+6. Devlin, J., Chang, M.-W., Lee, K., & Toutanova, K. (2019). [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805). *Proceedings of NAACL-HLT*.
+7. Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., Dehghani, M., Minderer, M., Heigold, G., Gelly, S., Uszkoreit, J., & Houlsby, N. (2021). [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929). *Proceedings of ICLR*.
 
 ## License
 
