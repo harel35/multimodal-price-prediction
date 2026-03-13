@@ -63,8 +63,6 @@ The notebook downloads product images into `data/images/` and downloads the Fast
 
 ## How to Run
 
-Run all commands from `ProjectDeepLearning/`.
-
 Main pipeline (`main.py`) uses settings from `src/config.py` (encoders, fusion, paths, batch size, epochs, checkpoint path, etc.).
 
 Train:
