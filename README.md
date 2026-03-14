@@ -102,7 +102,6 @@ ProjectDeepLearning/
 ├── setup_assets.ipynb              # Asset setup notebook (images + FastText)
 ├── data/
 │   ├── data.csv                    # Dataset metadata: image link, text, price
-│   ├── example.ipynb               # Data exploration notebook
 │   └── utils.py                    # Image download helpers
 └── src/
     ├── __init__.py
