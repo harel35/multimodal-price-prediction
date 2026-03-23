@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project addresses multimodal product price prediction from two inputs: a product image and its catalog text description. The objective is to regress a single USD price by combining complementary visual and textual signals.
+This team project addresses multimodal product price prediction from two inputs: a product image and its catalog text description. The objective is to regress a single USD price by combining complementary visual and textual signals.
 
 The implemented framework uses pretrained visual and textual encoders, a configurable fusion module, and a regression head. The project compares multiple architectural choices across:
 - visual encoders: ResNet, ViT, DINOv3
